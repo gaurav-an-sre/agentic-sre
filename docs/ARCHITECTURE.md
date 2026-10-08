@@ -50,6 +50,25 @@ The same design was later rebuilt on the Claude Agent SDK (see `claude-code-demo
 
 Each of these maps to one line in the v2 table above (4, 4, 5/6, 4, 8).
 
+## How agents reach tools: MCP
+
+Every external system sits behind an MCP server (`mcp_servers/`), a fixed menu of typed actions. The model
+never holds API keys or a shell. Four services, one Cloud Run deployment each, internal ingress, IAM auth,
+one service account each:
+
+| server | tools | SA roles | writes |
+|---|---|---|---|
+| observability-mcp | query_metrics, get_service_health, get_alerts, get_logs, get_slo | monitoring.viewer, logging.viewer | none |
+| release-mcp | list_revisions, get_deploy_diff, read_config, get_runbook | run.viewer, clouddeploy.viewer | none |
+| incident-mcp | get_incident, create_issue, write_postmortem | logging.logWriter (+ Jira/Confluence tokens) | Jira/Confluence only |
+| remediation-mcp | shift_traffic(proposal_id, service, revision, percent) | run.developer | Cloud Run traffic, approval-gated |
+
+The gate runs twice: in the agent's `before_tool` callback (`control_plane.py`) and again inside
+remediation-mcp (`check()`: approved proposal, matching target revision, revision on the allow-list). Results
+carry ids (Cloud Logging insertId, revision name, alert policy id) so the citation validator can resolve them.
+`SRE_TOOLS=mcp` switches the v2 squad from in-process functions to `McpToolset`s; the squad, prompts, control
+plane and evals are unchanged - which is also why the same servers serve a Claude Agent SDK harness.
+
 ## Gemini/ADK -> Claude Agent SDK mapping
 | Concern | ADK (v2) | Claude Agent SDK (sre-agent) |
 |---|---|---|

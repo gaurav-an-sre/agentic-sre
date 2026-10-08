@@ -1,0 +1,11 @@
+{"title":"Checkout & payments SLOs","uid":"checkout-slo","schemaVersion":39,"time":{"from":"now-1h","to":"now"},
+ "panels":[
+  {"type":"timeseries","title":"5xx req/s by service","gridPos":{"x":0,"y":0,"w":12,"h":8},
+   "targets":[{"queryType":"timeSeriesList","timeSeriesList":{"projectName":"${PROJECT}","filters":["resource.type","=","cloud_run_revision","metric.type","=","run.googleapis.com/request_count","metric.label.response_code_class","=","5xx"],"perSeriesAligner":"ALIGN_RATE","crossSeriesReducer":"REDUCE_SUM","groupBys":["resource.label.service_name"],"alignmentPeriod":"cloud-monitoring-auto"}}]},
+  {"type":"timeseries","title":"p95 latency (ms)","gridPos":{"x":12,"y":0,"w":12,"h":8},
+   "targets":[{"queryType":"timeSeriesList","timeSeriesList":{"projectName":"${PROJECT}","filters":["resource.type","=","cloud_run_revision","metric.type","=","run.googleapis.com/request_latencies"],"perSeriesAligner":"ALIGN_PERCENTILE_95","crossSeriesReducer":"REDUCE_MAX","groupBys":["resource.label.service_name"],"alignmentPeriod":"cloud-monitoring-auto"}}]},
+  {"type":"timeseries","title":"req/s by revision","gridPos":{"x":0,"y":8,"w":12,"h":8},
+   "targets":[{"queryType":"timeSeriesList","timeSeriesList":{"projectName":"${PROJECT}","filters":["resource.type","=","cloud_run_revision","metric.type","=","run.googleapis.com/request_count"],"perSeriesAligner":"ALIGN_RATE","crossSeriesReducer":"REDUCE_SUM","groupBys":["resource.label.revision_name"],"alignmentPeriod":"cloud-monitoring-auto"}}]},
+  {"type":"timeseries","title":"Cloud SQL connections","gridPos":{"x":12,"y":8,"w":12,"h":8},
+   "targets":[{"queryType":"timeSeriesList","timeSeriesList":{"projectName":"${PROJECT}","filters":["resource.type","=","cloudsql_database","metric.type","=","cloudsql.googleapis.com/database/postgresql/num_backends"],"perSeriesAligner":"ALIGN_MEAN","crossSeriesReducer":"REDUCE_SUM","alignmentPeriod":"cloud-monitoring-auto"}}]}
+ ]}

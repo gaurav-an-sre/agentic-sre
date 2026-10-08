@@ -4,7 +4,7 @@ export PYTHONPATH := system/checkout:.
 setup:            ## venv + deps (no API key needed for tests)
 	uv venv -q .venv && uv pip install -q -e ".[dev]"
 test:             ## offline tests + lint
-	.venv/bin/pytest -q && .venv/bin/ruff check agents tests evals
+	.venv/bin/pytest -q && .venv/bin/ruff check agents tests evals mcp_servers
 bundle:           ## regenerate + reseal the synthetic incident bundle
 	cd evidence && ../$(PY) make_bundle.py
 # --- the real system, locally -------------------------------------------------
@@ -29,3 +29,13 @@ evals:
 	$(PY) -m evals.run_evals
 audit:
 	tail -n 20 audit/tool_calls.jsonl
+# --- MCP servers locally (bundle source) --------------------------------------
+mcp-%:            ## make mcp-observability | mcp-release | mcp-incident | mcp-remediation  (PORT=8081..)
+	$(PY) -m mcp_servers $*
+# --- GCP (needs PROJECT=...) ---------------------------------------------------
+deploy-system:    ## APIs, Cloud SQL, payments-api, checkout, alerts, dashboard, Grafana, PagerDuty channel
+	for s in 00_enable_apis 10_provision 20_deploy 22_deploy_checkout 30_alerts 35_dashboard 32_grafana 34_pagerduty; do system/scripts/$$s.sh || exit 1; done
+deploy-mcp:       ## 4 MCP servers on Cloud Run, one SA each, internal ingress
+	system/scripts/70_mcp_servers.sh
+deploy-agent:     ## v2 squad on Vertex AI Agent Engine + PagerDuty webhook trigger
+	$(PY) agents/v2/deploy_agent_engine.py && system/scripts/75_trigger.sh

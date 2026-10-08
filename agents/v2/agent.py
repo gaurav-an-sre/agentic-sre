@@ -16,6 +16,7 @@ from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 
 from agents.common import tools as t
 from agents.common.control_plane import after_tool, before_tool
+from agents.common.mcp_tools import toolset, use_mcp
 
 MODEL = os.environ.get("SRE_MODEL", "gemini-2.5-flash")
 CB = {"before_tool_callback": before_tool, "after_tool_callback": after_tool}
@@ -30,21 +31,35 @@ def _collector(name: str, tools: list, what: str) -> LlmAgent:
     )
 
 
+if use_mcp():  # production wiring: tools live behind the MCP servers, each with its own IAM identity
+    METRICS_T = [toolset("OBS_MCP_URL", ["get_service_health", "query_metrics", "get_slo"])]
+    LOGS_T = [toolset("OBS_MCP_URL", ["get_logs", "get_alerts"])]
+    CHANGE_T = [toolset("RELEASE_MCP_URL")]
+    INVESTIGATOR_T = [toolset("OBS_MCP_URL", ["query_metrics", "get_logs"]), toolset("RELEASE_MCP_URL", ["list_revisions"]),
+                      t.propose_remediation]
+    SCRIBE_T = [toolset("INCIDENT_MCP_URL", ["write_postmortem", "create_issue"])]
+    APPLY_T = [toolset("REMEDIATION_MCP_URL")]
+else:
+    METRICS_T = [t.verify_bundle, t.get_service_health, t.query_metrics]
+    LOGS_T = [t.get_logs, t.get_alerts]
+    CHANGE_T = [t.get_recent_deployments, t.read_config, t.read_runbook]
+    INVESTIGATOR_T = [t.query_metrics, t.get_logs, t.get_recent_deployments, t.propose_remediation]
+    SCRIBE_T = [t.write_postmortem]
+    APPLY_T = [t.apply_remediation]
+
 collectors = ParallelAgent(
     name="collectors",
     sub_agents=[
-        _collector("metrics_collector", [t.verify_bundle, t.get_service_health, t.query_metrics],
-                   "which services/metrics moved, when (minute), baseline vs now"),
-        _collector("logs_collector", [t.get_logs, t.get_alerts],
-                   "the first error lines per service, their timestamps, and the firing alerts"),
-        _collector("change_collector", [t.get_recent_deployments, t.read_config, t.read_runbook],
+        _collector("metrics_collector", METRICS_T, "which services/metrics moved, when (minute), baseline vs now"),
+        _collector("logs_collector", LOGS_T, "the first error lines per service, their timestamps, and the firing alerts"),
+        _collector("change_collector", CHANGE_T,
                    "every deployment/config change in the window with its diff, and the matching runbook"),
     ],
 )
 
 investigator = LlmAgent(
     name="investigator", model=MODEL, output_key="investigation", **CB,
-    tools=[t.query_metrics, t.get_logs, t.get_recent_deployments, t.propose_remediation],
+    tools=INVESTIGATOR_T,
     instruction=(
         "You are the incident investigator. Inputs from collectors:\n"
         "METRICS:\n{metrics_collector}\nLOGS:\n{logs_collector}\nCHANGES:\n{change_collector}\n\n"
@@ -56,15 +71,16 @@ investigator = LlmAgent(
 )
 
 scribe = LlmAgent(
-    name="scribe", model=MODEL, tools=[t.write_postmortem], output_key="postmortem", **CB,
+    name="scribe", model=MODEL, tools=SCRIBE_T, output_key="postmortem", **CB,
     instruction=("Write a blameless postmortem (markdown: summary, impact, timeline, root cause, what went "
                  "well, what went badly, 3 action items with owners) from:\n{investigation}\n"
                  "Then call write_postmortem with it."),
 )
 
 applier = LlmAgent(
-    name="applier", model=MODEL, tools=[t.apply_remediation], **CB,
-    instruction="Call apply_remediation with the proposal id you are given and report the result verbatim.",
+    name="applier", model=MODEL, tools=APPLY_T, **CB,
+    instruction="Apply the proposal id you are given (apply_remediation, or shift_traffic with its service and "
+                "target revision) and report the result verbatim.",
 )
 
 root_agent = SequentialAgent(name="sre_v2", sub_agents=[collectors, investigator, scribe])

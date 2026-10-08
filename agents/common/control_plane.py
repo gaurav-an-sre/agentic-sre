@@ -29,7 +29,7 @@ def audit(event: str, **fields: Any) -> None:
 def before_tool(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext) -> dict | None:
     """Return a dict to SHORT-CIRCUIT the tool (ADK uses it as the tool result); None to allow."""
     audit("PreToolUse", agent=tool_context.agent_name, tool=tool.name, args=args)
-    if tool.name == "apply_remediation":
+    if tool.name in {"apply_remediation", "shift_traffic"}:
         pid = str(args.get("proposal_id", ""))
         p = PROPOSALS / f"{pid}.json"
         status = json.loads(p.read_text())["status"] if p.exists() else "unknown"
