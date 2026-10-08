@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" font-family="Helvetica, Arial, sans-serif">
+<defs>
+ <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+ <marker id="ab" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1A73E8"/></marker>
+ <marker id="ag" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#188038"/></marker>
+ <marker id="ar" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#D93025"/></marker>
+ <style>
+  .lane{fill:#F8FAFC;stroke:#CBD5E1;stroke-width:1.5;rx:10}
+  .lt{font-size:14px;font-weight:700;fill:#334155;letter-spacing:.08em}
+  .box{fill:#FFFFFF;stroke:#94A3B8;stroke-width:1.5;rx:8}
+  .tool{fill:#F1F5F9;stroke:#64748B;stroke-width:1.5;rx:8}
+  .agent{fill:#E8F0FE;stroke:#1A73E8;stroke-width:1.8;rx:8}
+  .gate{fill:#FFF4E5;stroke:#E8710A;stroke-width:1.8;rx:8}
+  .human{fill:#E6F4EA;stroke:#188038;stroke-width:1.8;rx:8}
+  .t{font-size:15px;font-weight:700;fill:#0F172A}
+  .s{font-size:12px;fill:#475569}
+  .m{font-size:11px;fill:#64748B;font-family:Menlo,Consolas,monospace}
+  .ln{stroke:#475569;stroke-width:1.8;fill:none;marker-end:url(#a)}
+  .lb{stroke:#1A73E8;stroke-width:2;fill:none;marker-end:url(#ab)}
+  .lg{stroke:#188038;stroke-width:2;fill:none;marker-end:url(#ag)}
+  .lr{stroke:#D93025;stroke-width:2;fill:none;stroke-dasharray:6 4;marker-end:url(#ar)}
+  .cap{font-size:11px;fill:#334155}
+ </style>
+</defs>
+<rect width="1600" height="1000" fill="#FFFFFF"/>
+
+<!-- LANE 1: production -->
+<rect x="40" y="20" width="1520" height="140" class="lane"/>
+<text x="56" y="42" class="lt">1  PRODUCTION — CUSTOMER'S GCP PROJECT, asia-southeast1 (Bangkok traffic)</text>
+<rect x="60" y="58" width="130" height="86" class="box"/><text x="125" y="88" text-anchor="middle" class="t">Shoppers</text><text x="125" y="108" text-anchor="middle" class="s">web + mobile app</text><text x="125" y="126" text-anchor="middle" class="s">peak ~1,200 req/s</text>
+<rect x="230" y="58" width="150" height="86" class="box"/><text x="305" y="88" text-anchor="middle" class="t">Cloud LB</text><text x="305" y="108" text-anchor="middle" class="s">HTTPS LB + Cloud Armor</text><text x="305" y="126" text-anchor="middle" class="s">Cloud CDN for assets</text>
+<rect x="420" y="58" width="170" height="86" class="box"/><text x="505" y="88" text-anchor="middle" class="t">storefront</text><text x="505" y="108" text-anchor="middle" class="s">Cloud Run · Next.js</text><text x="505" y="126" text-anchor="middle" class="s">catalog, cart, search</text>
+<rect x="630" y="58" width="170" height="86" class="box"/><text x="715" y="88" text-anchor="middle" class="t">checkout</text><text x="715" y="108" text-anchor="middle" class="s">Cloud Run · FastAPI</text><text x="715" y="126" text-anchor="middle" class="s">pricing, promos, orders</text>
+<rect x="840" y="58" width="170" height="86" class="box"/><text x="925" y="88" text-anchor="middle" class="t">payments-api</text><text x="925" y="108" text-anchor="middle" class="s">Cloud Run · FastAPI</text><text x="925" y="126" text-anchor="middle" class="s">PSP auth/capture, refunds</text>
+<rect x="1050" y="58" width="150" height="86" class="box"/><text x="1125" y="88" text-anchor="middle" class="t">Cloud SQL</text><text x="1125" y="108" text-anchor="middle" class="s">PostgreSQL 15, HA</text><text x="1125" y="126" text-anchor="middle" class="s">+ Memorystore (Redis)</text>
+<path d="M190,101 L230,101" class="ln"/><path d="M380,101 L420,101" class="ln"/><path d="M590,101 L630,101" class="ln"/><path d="M800,101 L840,101" class="ln"/><path d="M1010,101 L1050,101" class="ln"/>
+<rect x="1240" y="58" width="300" height="86" class="box" style="stroke-dasharray:5 4"/>
+<text x="1390" y="84" text-anchor="middle" class="t">Release pipeline</text>
+<text x="1390" y="104" text-anchor="middle" class="s">GitHub → Cloud Build → Cloud Deploy</text>
+<text x="1390" y="122" text-anchor="middle" class="s">revisions = rollback unit · Secret Manager</text>
+<text x="1390" y="138" text-anchor="middle" class="s">3 squads, 8–12 releases/week</text>
+
+<!-- LANE 2: observability -->
+<rect x="40" y="172" width="1520" height="120" class="lane"/>
+<text x="56" y="194" class="lt">2  OBSERVABILITY &amp; ON-CALL TOOLING (built in phase 1 — this is where the SRE practice lives)</text>
+<rect x="60" y="208" width="240" height="72" class="tool"/><text x="180" y="232" text-anchor="middle" class="t">Monitoring + Managed Prometheus</text><text x="180" y="250" text-anchor="middle" class="s">RED metrics, SLOs (99.9% checkout)</text><text x="180" y="266" text-anchor="middle" class="s">uptime checks, error budget burn alerts</text>
+<rect x="320" y="208" width="200" height="72" class="tool"/><text x="420" y="232" text-anchor="middle" class="t">Grafana</text><text x="420" y="250" text-anchor="middle" class="s">service dashboards, SLO panels</text><text x="420" y="266" text-anchor="middle" class="s">alert rules → PagerDuty</text>
+<rect x="540" y="208" width="240" height="72" class="tool"/><text x="660" y="232" text-anchor="middle" class="t">Cloud Logging + Log Explorer</text><text x="660" y="250" text-anchor="middle" class="s">JSON logs, request id on every line</text><text x="660" y="266" text-anchor="middle" class="s">log-based metrics · sink → BigQuery</text>
+<rect x="800" y="208" width="160" height="72" class="tool"/><text x="880" y="232" text-anchor="middle" class="t">Cloud Trace</text><text x="880" y="250" text-anchor="middle" class="s">OpenTelemetry spans</text><text x="880" y="266" text-anchor="middle" class="s">checkout → payments → PSP</text>
+<rect x="980" y="208" width="170" height="72" class="tool"/><text x="1065" y="232" text-anchor="middle" class="t">PagerDuty</text><text x="1065" y="250" text-anchor="middle" class="s">on-call rotation, SEV levels</text><text x="1065" y="266" text-anchor="middle" class="s">Slack #incident-* bridge</text>
+<rect x="1170" y="208" width="170" height="72" class="tool"/><text x="1255" y="232" text-anchor="middle" class="t">Jira + Confluence</text><text x="1255" y="250" text-anchor="middle" class="s">runbooks, postmortems</text><text x="1255" y="266" text-anchor="middle" class="s">action items (SRE board)</text>
+<rect x="1360" y="208" width="180" height="72" class="tool"/><text x="1450" y="232" text-anchor="middle" class="t">Cloud Run / Deploy API</text><text x="1450" y="250" text-anchor="middle" class="s">revision history, env diffs</text><text x="1450" y="266" text-anchor="middle" class="s">traffic split per revision</text>
+<path d="M715,144 L715,172" class="ln" style="marker-end:none"/><path d="M925,144 L925,172" class="ln" style="marker-end:none"/>
+
+<!-- LANE 3: MCP -->
+<rect x="40" y="304" width="1520" height="112" class="lane"/>
+<text x="56" y="326" class="lt">3  MCP TOOL SERVERS (Cloud Run, internal ingress, IAM-authenticated, one service account each — the only way agents touch anything)</text>
+<rect x="60" y="340" width="330" height="64" class="box"/><text x="225" y="362" text-anchor="middle" class="t">observability-mcp  (read-only)</text><text x="225" y="380" text-anchor="middle" class="m">query_metrics · get_alerts · get_logs</text><text x="225" y="396" text-anchor="middle" class="s">SA: monitoring.viewer, logging.viewer</text>
+<rect x="410" y="340" width="330" height="64" class="box"/><text x="575" y="362" text-anchor="middle" class="t">release-mcp  (read-only)</text><text x="575" y="380" text-anchor="middle" class="m">list_revisions · get_deploy_diff · read_config</text><text x="575" y="396" text-anchor="middle" class="s">SA: run.viewer, clouddeploy.viewer</text>
+<rect x="760" y="340" width="330" height="64" class="box"/><text x="925" y="362" text-anchor="middle" class="t">incident-mcp</text><text x="925" y="380" text-anchor="middle" class="m">get_incident · create_issue · postmortem</text><text x="925" y="396" text-anchor="middle" class="s">writes limited to Jira/Confluence, never prod</text>
+<rect x="1110" y="340" width="430" height="64" class="gate"/><text x="1325" y="362" text-anchor="middle" class="t">remediation-mcp  (the only write path to production)</text><text x="1325" y="380" text-anchor="middle" class="m">shift_traffic(service, revision, percent)</text><text x="1325" y="396" text-anchor="middle" class="s">own SA (run.services.update) · approval record · allow-listed revisions</text>
+<path d="M180,280 L180,340" class="ln"/><path d="M660,280 L660,300 L225,300 L225,340" class="ln"/><path d="M1450,280 L1450,300 L575,300 L575,340" class="ln"/><path d="M1065,280 L1065,300 L925,300 L925,340" class="ln"/><path d="M1450,300 L1325,300 L1325,340" class="ln"/>
+
+<!-- LANE 4: agents -->
+<rect x="40" y="428" width="1030" height="300" class="lane"/>
+<text x="56" y="450" class="lt">4  AGENT SQUAD — Google ADK on Vertex AI Agent Engine · front door: Gemini Enterprise + PagerDuty webhook</text>
+<rect x="60" y="468" width="300" height="240" class="box" style="stroke-dasharray:5 4"/>
+<text x="210" y="488" text-anchor="middle" class="s">ParallelAgent · read-only collectors</text>
+<rect x="76" y="500" width="268" height="56" class="agent"/><text x="210" y="522" text-anchor="middle" class="t">metrics collector</text><text x="210" y="542" text-anchor="middle" class="m">query_metrics · get_slo · get_alerts</text>
+<rect x="76" y="568" width="268" height="56" class="agent"/><text x="210" y="590" text-anchor="middle" class="t">logs + traces collector</text><text x="210" y="610" text-anchor="middle" class="m">get_logs · get_traces</text>
+<rect x="76" y="636" width="268" height="56" class="agent"/><text x="210" y="658" text-anchor="middle" class="t">change collector</text><text x="210" y="678" text-anchor="middle" class="m">list_revisions · get_deploy_diff</text>
+<rect x="420" y="500" width="270" height="150" class="agent"/>
+<text x="555" y="526" text-anchor="middle" class="t">investigator</text>
+<text x="555" y="548" text-anchor="middle" class="s">timeline from summaries (not raw logs)</text>
+<text x="555" y="566" text-anchor="middle" class="s">rules out alternatives</text>
+<text x="555" y="584" text-anchor="middle" class="s">exactly ONE remediation proposal</text>
+<text x="555" y="604" text-anchor="middle" class="m">every claim cites a log/deploy/alert id</text>
+<text x="555" y="630" text-anchor="middle" class="m">(has no write tools)</text>
+<rect x="760" y="500" width="280" height="90" class="agent"/>
+<text x="900" y="526" text-anchor="middle" class="t">scribe</text>
+<text x="900" y="548" text-anchor="middle" class="s">blameless postmortem + action items</text>
+<text x="900" y="568" text-anchor="middle" class="m">write_postmortem · create_issue</text>
+<rect x="760" y="618" width="280" height="80" class="agent"/>
+<text x="900" y="644" text-anchor="middle" class="t">applier (separate agent)</text>
+<text x="900" y="664" text-anchor="middle" class="m">shift_traffic(payments-api, 00041)</text>
+<text x="900" y="684" text-anchor="middle" class="s">runs only after a human approval record exists</text>
+<path d="M344,528 L420,560" class="lb"/><path d="M344,596 L420,580" class="lb"/><path d="M344,664 L420,600" class="lb"/>
+<text x="382" y="640" text-anchor="middle" class="cap">summaries</text><text x="382" y="654" text-anchor="middle" class="cap">with ids</text>
+<path d="M690,545 L760,545" class="lb"/>
+<path d="M555,650 L555,680 L740,680 L740,658 L760,658" class="lr"/><text x="648" y="700" text-anchor="middle" class="cap" fill="#D93025">proposal P-1042 (pending) — apply denied until approved</text>
+<path d="M210,428 L210,404" class="ln" style="marker-end:none"/><path d="M555,428 L575,404" class="ln" style="marker-end:none"/><path d="M900,428 L925,404" class="ln" style="marker-end:none"/>
+
+<!-- LANE 5: control plane -->
+<rect x="1090" y="428" width="470" height="300" class="lane" style="fill:#FFF8F0;stroke:#E8710A"/>
+<text x="1106" y="450" class="lt" fill="#9A3412">5  CONTROL PLANE — CODE, NOT PROMPT</text>
+<text x="1106" y="468" class="s">before/after-tool callbacks on every agent, every MCP call</text>
+<rect x="1106" y="480" width="438" height="52" class="gate"/><text x="1325" y="500" text-anchor="middle" class="t">Citation validator</text><text x="1325" y="518" text-anchor="middle" class="s">ids must resolve in Cloud Logging / Cloud Run / PagerDuty, else denied</text>
+<rect x="1106" y="540" width="438" height="52" class="gate"/><text x="1325" y="560" text-anchor="middle" class="t">Approval gate</text><text x="1325" y="578" text-anchor="middle" class="s">shift_traffic denied unless proposal status = approved (by whom, when)</text>
+<rect x="1106" y="600" width="438" height="52" class="gate"/><text x="1325" y="620" text-anchor="middle" class="t">Rollback allow-list</text><text x="1325" y="638" text-anchor="middle" class="s">target must be a revision that served traffic in the last 7 days</text>
+<rect x="1106" y="660" width="438" height="52" class="gate"/><text x="1325" y="680" text-anchor="middle" class="t">Audit log</text><text x="1325" y="698" text-anchor="middle" class="s">every call + denial → Cloud Logging + BigQuery (who, what, which ids)</text>
+<path d="M1070,578 L1090,578" class="ln" style="marker-end:none"/><text x="1080" y="570" text-anchor="middle" class="cap"></text>
+
+<!-- LANE 6: humans -->
+<rect x="40" y="740" width="1520" height="170" class="lane"/>
+<text x="56" y="762" class="lt">6  HUMANS AND OUTCOMES</text>
+<rect x="60" y="778" width="340" height="110" class="human"/>
+<text x="230" y="802" text-anchor="middle" class="t">On-call engineer (PagerDuty rotation)</text>
+<text x="230" y="822" text-anchor="middle" class="s">page + cited timeline in Gemini Enterprise / Slack</text>
+<text x="230" y="840" text-anchor="middle" class="s">checks cited logs + deploy diff in Grafana / Log Explorer</text>
+<text x="230" y="862" text-anchor="middle" class="m">approve P-1042 → approval record (who, when)</text>
+<rect x="420" y="778" width="300" height="110" class="box"/>
+<text x="570" y="802" text-anchor="middle" class="t">Approved change</text>
+<text x="570" y="822" text-anchor="middle" class="s">Cloud Run traffic 100% → previous revision</text>
+<text x="570" y="840" text-anchor="middle" class="s">5xx back to baseline; PagerDuty incident resolved</text>
+<text x="570" y="862" text-anchor="middle" class="m">gcloud run services update-traffic …</text>
+<rect x="760" y="778" width="300" height="110" class="box"/>
+<text x="910" y="802" text-anchor="middle" class="t">Postmortem</text>
+<text x="910" y="822" text-anchor="middle" class="s">Confluence page from the cited timeline</text>
+<text x="910" y="840" text-anchor="middle" class="s">Jira action items on the SRE board</text>
+<text x="910" y="862" text-anchor="middle" class="s">reviewed in weekly ops review (new ritual)</text>
+<rect x="1100" y="778" width="440" height="110" class="box"/>
+<text x="1320" y="802" text-anchor="middle" class="t">Incident replay suite (Cloud Build, no prod access)</text>
+<text x="1320" y="822" text-anchor="middle" class="s">each real incident becomes a replay case (logs, metrics, deploys)</text>
+<text x="1320" y="840" text-anchor="middle" class="s">graded by code: culprit, valid ids, one proposal, no unapproved change</text>
+<text x="1320" y="862" text-anchor="middle" class="s">runs on every prompt/model/tool change · gates autonomy widening</text>
+<path d="M400,833 L420,833" class="lg"/><text x="410" y="822" text-anchor="middle" class="cap" fill="#188038">ok</text>
+<path d="M720,833 L760,833" class="ln" style="stroke-dasharray:4 3"/>
+<path d="M900,698 L900,740 L910,740 L910,778" class="lb" style="marker-end:none"/>
+<path d="M220,740 L220,778" class="lg"/>
+<path d="M1325,712 L1325,778" class="ln" style="marker-end:none"/>
+</svg>
