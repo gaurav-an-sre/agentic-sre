@@ -1,5 +1,5 @@
 [project]
-name = "agentic-sre-thai-retail"
+name = "agentic-sre"
 version = "0.1.0"
 description = "Anonymised Thai e-commerce retailer: a real Cloud Run system, its incidents, and two generations of an agentic SRE (ADK single agent -> ADK multi-agent with a control plane)."
 requires-python = ">=3.12"

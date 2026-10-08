@@ -1,4 +1,4 @@
-# agentic-sre-thai-retail
+# agentic-sre
 
 A Thai e-commerce retailer (anonymised) with small dev teams and no ops function kept shipping
 changes that broke production. This repo is the reference implementation of what we built with them:
