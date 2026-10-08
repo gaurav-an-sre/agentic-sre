@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Northstar Goods — Checkout Reliability Demo</title>
+  <style>
+    :root { --ink:#16202a; --muted:#66727d; --green:#0b9b62; --red:#d83245; --cream:#f5f7f8; }
+    * { box-sizing:border-box; } body { margin:0; color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,sans-serif; background:var(--cream); }
+    .status { padding:20px 5vw; color:#fff; display:flex; align-items:center; gap:28px; }
+    .status.green { background:var(--green); } .status.red { background:var(--red); }
+    .status.no_traffic { background:#68737d; }
+    .state { font-size:clamp(2rem,5vw,4rem); font-weight:900; letter-spacing:.04em; }
+    .metric { font-size:1.35rem; font-weight:700; } .metric strong { display:block; font-size:2rem; }
+    main { max-width:1400px; margin:0 auto; padding:20px 5vw; } header { display:flex; justify-content:space-between; align-items:end; gap:24px; }
+    h1 { margin:0; font-size:clamp(2rem,4vw,3.5rem); } .subtitle { color:var(--muted); font-size:1.1rem; }
+    .layout { display:grid; grid-template-columns:1fr 380px; gap:28px; margin-top:28px; }
+    .products { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .card,.cart { background:#fff; border-radius:16px; padding:22px; box-shadow:0 6px 24px #1b2a3a12; }
+    .card { min-height:190px; display:flex; flex-direction:column; justify-content:space-between; } .card h2 { margin:0 0 8px; font-size:1.3rem; }
+    .description { color:var(--muted); min-height:42px; } .price { font-size:1.5rem; font-weight:800; }
+    button { border:0; border-radius:10px; padding:12px 16px; font-size:1rem; font-weight:750; cursor:pointer; background:#16202a; color:#fff; }
+    button:hover { opacity:.85; } .cart { position:sticky; top:20px; height:max-content; } .cart h2 { margin-top:0; }
+    .cart-row { display:flex; justify-content:space-between; gap:10px; border-bottom:1px solid #e7eaec; padding:10px 0; }
+    .breakdown { margin:16px 0; } .breakdown div { display:flex; justify-content:space-between; padding:5px 0; }
+    .total { border-top:2px solid var(--ink); font-size:1.3rem; font-weight:850; padding-top:10px !important; }
+    #checkout { width:100%; margin-top:10px; background:#146bd7; font-size:1.15rem; } #result { margin-top:16px; font-weight:700; }
+    .success { color:var(--green); } .declined { color:var(--red); }
+    .history { margin-top:20px; background:#fff; border-radius:16px; padding:18px 22px; font-size:1.2rem; font-weight:800; } .bars { display:flex; align-items:end; gap:5px; height:70px; margin-top:10px; }
+    .bar { flex:1; min-height:5px; border-radius:4px 4px 0 0; background:var(--green); } .bar.bad { background:var(--red); }
+    .bar.empty { height:14px !important; min-height:14px; background:transparent; border:3px solid #9da6ad; }
+    @media (max-width:900px) { .layout { grid-template-columns:1fr; } .products { grid-template-columns:repeat(2,minmax(0,1fr)); } .cart { position:static; } }
+    @media (max-width:560px) { .products { grid-template-columns:1fr; } .status { flex-wrap:wrap; gap:14px; } }
+  </style>
+</head>
+<body>
+  <section id="status" class="status green">
+    <div id="state" class="state">GREEN</div>
+    <div class="metric"><strong id="success-count">0</strong> succeeded / 60s</div>
+    <div class="metric"><strong id="decline-count">0</strong> declined / 60s</div>
+    <div class="metric"><strong id="success-rate">—</strong> success rate</div>
+  </section>
+  <main>
+    <header><div><h1>Northstar Goods</h1><div class="subtitle">Live checkout reliability demonstration</div></div></header>
+    <section class="history"><strong>Success rate by 10-second interval</strong><div id="bars" class="bars"></div></section>
+    <div class="layout">
+      <section class="products">
+        {% for product in products %}
+        <article class="card">
+          <div><h2>{{ product.name }}</h2><div class="description">{{ product.description }}</div></div>
+            <div><span class="price">${{ product.price_cents // 100 }}.{{ "%02d"|format(product.price_cents % 100) }}</span>
+            <button data-product="{{ product.id }}">Add to cart</button></div>
+        </article>
+        {% endfor %}
+      </section>
+      <aside class="cart">
+        <h2>Your cart</h2><div id="cart-items"><p class="subtitle">Add products to begin.</p></div>
+        <div class="breakdown">
+          <div><span>Subtotal</span><strong id="subtotal">$0.00</strong></div>
+          <div><span>Discount</span><strong id="discount">$0.00</strong></div>
+          <div><span>Tax</span><strong id="tax">$0.00</strong></div>
+          <div><span>Shipping</span><strong id="shipping">$0.00</strong></div>
+          <div class="total"><span>Total</span><strong id="total">$0.00</strong></div>
+        </div>
+        <button id="checkout" disabled>Checkout</button><div id="result"></div>
+      </aside>
+    </div>
+  </main>
+  <script>
+    const products = {{ products|tojson }};
+    const cart = new Map();
+    const money = cents => `$${(cents / 100).toFixed(2)}`;
+    const payload = () => ({items:[...cart].map(([product_id, quantity]) => ({product_id, quantity}))});
+    const renderCart = async () => {
+      const holder = document.querySelector("#cart-items");
+      holder.innerHTML = "";
+      for (const [id, quantity] of cart) {
+        const p = products.find(x => x.id === id);
+        const row = document.createElement("div"); row.className = "cart-row";
+        row.innerHTML = `<span>${p.name} × ${quantity}</span><strong>${money(p.price_cents * quantity)}</strong>`;
+        holder.appendChild(row);
+      }
+      if (!cart.size) holder.innerHTML = '<p class="subtitle">Add products to begin.</p>';
+      document.querySelector("#checkout").disabled = !cart.size;
+      if (!cart.size) return updateQuote({subtotal_cents:0,discount_cents:0,tax_cents:0,shipping_cents:0,total_cents:0});
+      const response = await fetch("/api/quote", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload())});
+      updateQuote(await response.json());
+    };
+    const updateQuote = q => ["subtotal","discount","tax","shipping","total"].forEach(k => document.querySelector("#"+k).textContent = money(q[k+"_cents"]));
+    document.querySelectorAll("[data-product]").forEach(button => button.addEventListener("click", () => {
+      const id = Number(button.dataset.product); cart.set(id, (cart.get(id) || 0) + 1); renderCart();
+    }));
+    document.querySelector("#checkout").addEventListener("click", async () => {
+      const response = await fetch("/api/checkout", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload())});
+      const result = await response.json(); const box = document.querySelector("#result");
+      if (result.status === "succeeded") { box.className = "success"; box.textContent = `Payment succeeded — order #${result.order_id}`; }
+      else { box.className = "declined"; box.textContent = `We couldn't process your payment (${result.decline_reason})`; }
+      await refreshStatus();
+    });
+    const refreshStatus = async () => {
+      const s = await (await fetch("/api/status")).json();
+      document.querySelector("#state").textContent = s.state === "NO_TRAFFIC" ? "NO TRAFFIC" : s.state;
+      document.querySelector("#status").className = "status " + s.state.toLowerCase();
+      document.querySelector("#success-count").textContent = s.succeeded_last_60s;
+      document.querySelector("#decline-count").textContent = s.declined_last_60s;
+      document.querySelector("#success-rate").textContent = s.success_rate === null ? "—" : `${(s.success_rate * 100).toFixed(1)}%`;
+      const bars = document.querySelector("#bars"); bars.innerHTML = "";
+      s.buckets.forEach(b => { const bar = document.createElement("div"); const empty = b.success_rate === null; bar.className = "bar" + (empty ? " empty" : b.success_rate < .9 ? " bad" : ""); if (!empty) bar.style.height = `${Math.max(8, b.success_rate * 100)}%`; bar.title = empty ? "No traffic" : `${(b.success_rate*100).toFixed(0)}%`; bars.appendChild(bar); });
+    };
+    renderCart(); refreshStatus(); setInterval(refreshStatus, 1000);
+  </script>
+</body>
+</html>

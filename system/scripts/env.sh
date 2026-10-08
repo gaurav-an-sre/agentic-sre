@@ -1,0 +1,11 @@
+# shared settings for the live Cloud Run demo - source this first
+: "${PROJECT:?set PROJECT=<gcp project id>}"
+export REGION="${REGION:-asia-southeast1}"
+export SERVICE="${SERVICE:-payments-api}"
+export SQL_INSTANCE="${SQL_INSTANCE:-payments-db}"
+export DB_NAME="${DB_NAME:-payments}"
+export DB_USER="${DB_USER:-payments}"
+export RUNTIME_SA="${RUNTIME_SA:-payments-api-runtime@$PROJECT.iam.gserviceaccount.com}"
+export CONN_NAME="$PROJECT:$REGION:$SQL_INSTANCE"
+export REPO="${REPO:-demo}"
+export IMAGE="$REGION-docker.pkg.dev/$PROJECT/$REPO/$SERVICE"

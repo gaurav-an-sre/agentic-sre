@@ -1,0 +1,27 @@
+[
+ {
+  "id": "A-1",
+  "ts": "2026-10-09T09:07:00Z",
+  "severity": "warning",
+  "service": "cache-node-2",
+  "name": "CacheHitRateLow",
+  "status": "resolved",
+  "resolved_ts": "2026-10-09T09:09:00Z"
+ },
+ {
+  "id": "A-2",
+  "ts": "2026-10-09T09:15:00Z",
+  "severity": "critical",
+  "service": "payments-api",
+  "name": "HighErrorRate5xx",
+  "status": "firing"
+ },
+ {
+  "id": "A-3",
+  "ts": "2026-10-09T09:16:00Z",
+  "severity": "critical",
+  "service": "payments-api",
+  "name": "P95LatencySLOBurn",
+  "status": "firing"
+ }
+]

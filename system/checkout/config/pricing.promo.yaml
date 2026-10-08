@@ -1,0 +1,6 @@
+tax_rate: 0.08
+shipping_cents: 999
+promos:
+  - id: FREESHIP100
+    type: free_shipping
+    min_subtotal_cents: 10000

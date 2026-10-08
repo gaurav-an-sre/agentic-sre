@@ -1,0 +1,45 @@
+[
+ {
+  "id": "D-7725",
+  "service": "payments-api",
+  "version": "v2.14.2",
+  "ts": "2026-10-08T09:30:00Z",
+  "revision": "payments-api-00041-kqd",
+  "change": "CHG-88102",
+  "summary": "last known good (yesterday)",
+  "diff": []
+ },
+ {
+  "id": "D-7731",
+  "service": "ledger-svc",
+  "version": "v1.9.0",
+  "ts": "2026-10-09T08:35:00Z",
+  "revision": "ledger-svc-00017-bzt",
+  "change": "CHG-88190",
+  "summary": "dependency bumps",
+  "diff": []
+ },
+ {
+  "id": "D-7740",
+  "service": "payments-api",
+  "version": "v2.14.3",
+  "ts": "2026-10-09T09:12:00Z",
+  "revision": "payments-api-00042-x7f",
+  "change": "CHG-88213",
+  "summary": "cost optimisation: right-size DB connection pool per instance",
+  "diff": [
+   {
+    "file": "config/payments-api.env",
+    "key": "DB_POOL_SIZE",
+    "old": "50",
+    "new": "5"
+   },
+   {
+    "file": "config/payments-api.env",
+    "key": "DB_POOL_TIMEOUT_MS",
+    "old": "5000",
+    "new": "1500"
+   }
+  ]
+ }
+]

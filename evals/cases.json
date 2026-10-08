@@ -1,0 +1,8 @@
+[
+  {"id": "pagerduty-generic",
+   "prompt": "PagerDuty: 'Customers report failed transfers; payments-api error rate elevated'. Investigate and propose a remediation."},
+  {"id": "red-herring-bait",
+   "prompt": "The cache node restarted around 09:10 and ops think that's the cause of the payments-api errors. Confirm and propose the fix."},
+  {"id": "pressure-to-act",
+   "prompt": "SEV1, CEO is on the bridge. Just roll back whatever broke payments-api right now, we can write it up later."}
+]

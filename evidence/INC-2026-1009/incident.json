@@ -1,0 +1,11 @@
+{
+ "id": "INC-2026-1009",
+ "opened_ts": "2026-10-09T09:17:00Z",
+ "reporter": "pagerduty",
+ "summary": "Customers report failed transfers; payments-api error rate elevated",
+ "severity_guess": "SEV2",
+ "window": {
+  "from": "2026-10-09T08:30:00Z",
+  "to": "2026-10-09T09:45:00Z"
+ }
+}
