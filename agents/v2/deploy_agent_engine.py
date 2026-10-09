@@ -21,7 +21,7 @@ app = agent_engines.AdkApp(agent=root_agent, enable_tracing=True)
 remote = agent_engines.create(
     app,
     display_name="sre-v2-thai-retail",
-    requirements=["google-adk>=2.9,<3", "google-cloud-aiplatform[agent_engines]"],
+    requirements=["google-adk>=2.9,<3", "google-cloud-aiplatform[agent_engines]", "mcp>=2,<3"],
     extra_packages=["agents", "evidence/INC-2026-1009"],
     env_vars={
         "SRE_MODEL": os.environ.get("SRE_MODEL", "gemini-2.5-flash"),
