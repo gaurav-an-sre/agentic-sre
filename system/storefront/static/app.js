@@ -15,6 +15,13 @@ const META = [
 ];
 const metaFor = (name) => META.find(([re]) => re.test(name)) || [null, "🛍️", "#eef0f3", "Grocery"];
 const thb = (c) => "฿" + (c / 100).toFixed(2);
+const esc = (s) => String(s).replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+// one id per checkout attempt: it rides as X-Request-ID end to end and doubles as the
+// payments idempotency key, so retrying a timed-out order replays instead of recharging
+const newReqId = () => "req_" + Array.from(crypto.getRandomValues(new Uint8Array(6)),
+  (b) => b.toString(16).padStart(2, "0")).join("");
+let checkoutRid = null;
 
 let products = [], cart = {};   // id -> qty
 
@@ -26,9 +33,9 @@ async function load() {
   document.getElementById("grid").innerHTML = products.map(p => {
     const [, emoji, bg, cat] = metaFor(p.name);
     return `<div class="card"><div class="tile" style="background:${bg}">${emoji}</div>
-      <div class="body"><span class="cat">${cat}</span><span class="name">${p.name}</span>
+      <div class="body"><span class="cat">${cat}</span><span class="name">${esc(p.name)}</span>
       <span class="price">${thb(p.price_cents)}</span>
-      <button class="add" onclick="add(${p.id})">Add to cart</button></div></div>`;
+      <button class="add" onclick="add(${+p.id})">Add to cart</button></div></div>`;
   }).join("");
 }
 
@@ -48,7 +55,7 @@ function render() {
     const p = products.find(x => x.id == id); if (!p) return "";
     const [, emoji] = metaFor(p.name);
     return `<div class="ci"><span class="emoji">${emoji}</span><div class="grow">
-      <div class="n">${p.name}</div><div class="p">${thb(p.price_cents)} × ${q}</div></div>
+      <div class="n">${esc(p.name)}</div><div class="p">${thb(p.price_cents)} × ${q}</div></div>
       <div class="qty"><button onclick="chg(${id},-1)">−</button><b>${q}</b>
       <button onclick="chg(${id},1)">+</button></div></div>`;
   }).join("");
@@ -64,20 +71,41 @@ $("scrim").onclick = closeAll;
 $("closeDrawer").onclick = closeAll;
 $("closeModal").onclick = closeAll;
 $("confirmDone").onclick = closeAll;
-$("checkoutBtn").onclick = () => {
+$("checkoutBtn").onclick = async () => {
   if (!subtotal()) return;
-  $("modalTotal").textContent = thb(subtotal());
+  checkoutRid = newReqId();   // fresh id per checkout attempt; retries below reuse it
+  const items = Object.entries(cart).map(([id, q]) => ({ product_id: +id, quantity: q }));
   $("modal").hidden = false;
+  $("quoteRows").innerHTML = "<p class='loading'>Fetching quote…</p>";
+  try {
+    const r = await fetch("/api/quote", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }),
+    });
+    const q = await r.json();
+    if (!r.ok || typeof q.total_cents !== "number") throw new Error(q.reason || r.status);
+    $("quoteRows").innerHTML =
+      `<div class="row"><span>Items</span><span>${thb(q.subtotal_cents)}</span></div>` +
+      (q.discount_cents ? `<div class="row"><span>Discount</span><span>−${thb(q.discount_cents)}</span></div>` : "") +
+      `<div class="row"><span>Tax</span><span>${thb(q.tax_cents)}</span></div>` +
+      `<div class="row"><span>Delivery</span><span>${q.shipping_cents ? thb(q.shipping_cents) : "Free"}</span></div>`;
+    $("modalTotal").textContent = thb(q.total_cents);
+  } catch {
+    $("quoteRows").innerHTML = `<div class="row"><span>Subtotal</span><span>${thb(subtotal())}</span></div>` +
+      `<div class="row muted"><span>Total</span><span>set at checkout</span></div>`;
+    $("modalTotal").textContent = "—";
+  }
 };
 
 $("checkoutForm").onsubmit = async (e) => {
   e.preventDefault();
   $("payBtn").disabled = true; $("payErr").hidden = true;
   const items = Object.entries(cart).map(([id, q]) => ({ product_id: +id, quantity: q }));
-  let resp, rid = "";
+  let resp, rid = checkoutRid || newReqId();
   try {
     resp = await fetch("/api/checkout", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }),
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Request-ID": rid },
+      body: JSON.stringify({ items }),
     });
     rid = resp.headers.get("x-request-id") || "";
     const body = await resp.json();
@@ -93,7 +121,9 @@ $("checkoutForm").onsubmit = async (e) => {
     $("confirm").hidden = false;
     if (ok) { cart = {}; render(); }
   } catch (err) {
-    $("payErr").textContent = "Checkout unreachable: " + err;
+    // payment state unknown on a timeout - do NOT claim "nothing was charged". A retry is
+    // safe because we resend the same X-Request-ID, which is the PSP idempotency key.
+    $("payErr").textContent = `Connection lost (${err}) — retry is safe: request id ${rid} replays instead of double-charging.`;
     $("payErr").hidden = false;
   }
   $("payBtn").disabled = false;

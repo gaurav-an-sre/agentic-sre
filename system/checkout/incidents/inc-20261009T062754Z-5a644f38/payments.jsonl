@@ -1,0 +1,9 @@
+{"decision": "declined", "order_id": 11, "reason": "amount_mismatch", "reconciliation_amount_cents": 12096, "request_id": "req_ab613bab0769", "requested_amount_cents": 13095, "timestamp": "2026-10-09T05:58:56.779167+00:00"}
+{"decision": "approved", "order_id": 12, "reason": null, "reconciliation_amount_cents": 5535, "request_id": "req_3a7667443bb3", "requested_amount_cents": 5535, "timestamp": "2026-10-09T05:59:04.669842+00:00"}
+{"decision": "declined", "order_id": 13, "reason": "amount_mismatch", "reconciliation_amount_cents": 20844, "request_id": "req_0a7c2acb9153", "requested_amount_cents": 21843, "timestamp": "2026-10-09T05:59:04.918866+00:00"}
+{"decision": "approved", "order_id": 14, "reason": null, "reconciliation_amount_cents": 2511, "request_id": "req_12d344d1a78e", "requested_amount_cents": 2511, "timestamp": "2026-10-09T05:59:05.169412+00:00"}
+{"decision": "approved", "order_id": 15, "reason": null, "reconciliation_amount_cents": 2511, "request_id": "req_787d0f9921ec", "requested_amount_cents": 2511, "timestamp": "2026-10-09T05:59:05.419658+00:00"}
+{"decision": "approved", "order_id": 16, "reason": null, "reconciliation_amount_cents": 10287, "request_id": "req_3fd3b2e55da5", "requested_amount_cents": 10287, "timestamp": "2026-10-09T05:59:05.670260+00:00"}
+{"decision": "approved", "order_id": 17, "reason": null, "reconciliation_amount_cents": 2511, "request_id": "req_2183a3ee9930", "requested_amount_cents": 2511, "timestamp": "2026-10-09T05:59:05.920177+00:00"}
+{"decision": "approved", "order_id": 18, "reason": null, "reconciliation_amount_cents": 2511, "request_id": "req_27cd050d640d", "requested_amount_cents": 2511, "timestamp": "2026-10-09T05:59:06.171899+00:00"}
+{"decision": "declined", "order_id": 19, "reason": "amount_mismatch", "reconciliation_amount_cents": 23436, "request_id": "req_b9126ba8c70b", "requested_amount_cents": 24435, "timestamp": "2026-10-09T05:59:06.420687+00:00"}

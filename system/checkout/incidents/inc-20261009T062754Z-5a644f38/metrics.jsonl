@@ -1,0 +1,5 @@
+{"attempts": 1, "declined": 1, "p95_latency_ms": 4.07, "second": 1791525536, "succeeded": 0, "success_rate": 0.0, "timestamp": "2026-10-09T05:58:56+00:00"}
+{"attempts": 2, "declined": 1, "p95_latency_ms": 2.71, "second": 1791525544, "succeeded": 1, "success_rate": 0.5, "timestamp": "2026-10-09T05:59:04+00:00"}
+{"attempts": 4, "declined": 0, "p95_latency_ms": 2.61, "second": 1791525545, "succeeded": 4, "success_rate": 1.0, "timestamp": "2026-10-09T05:59:05+00:00"}
+{"attempts": 2, "declined": 1, "p95_latency_ms": 4.8, "second": 1791525546, "succeeded": 1, "success_rate": 0.5, "timestamp": "2026-10-09T05:59:06+00:00"}
+{"attempts": 1, "declined": 0, "p95_latency_ms": 13.62, "second": 1791525558, "succeeded": 1, "success_rate": 1.0, "timestamp": "2026-10-09T05:59:18+00:00"}
