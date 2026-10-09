@@ -11,7 +11,7 @@ bundle:           ## regenerate + reseal the synthetic incident bundle
 up:               ## storefront + checkout on :8000
 	$(PY) -m uvicorn checkout_svc.main:app --port 8000
 shop:             ## deterministic shoppers against :8000
-	$(PY) system/checkout/shopper.py --base-url http://localhost:8000
+	$(PY) system/checkout/shopper.py --url http://localhost:8000
 break-promo:      ## deploy the free-shipping promo (green health, failing checkouts)
 	$(PY) system/checkout/deploy.py promo
 rollback-promo:
