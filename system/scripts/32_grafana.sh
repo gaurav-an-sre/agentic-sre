@@ -9,7 +9,7 @@ gcloud iam service-accounts describe "$SA" --project "$PROJECT" >/dev/null 2>&1 
 for r in roles/monitoring.viewer roles/logging.viewer; do
   gcloud projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role "$r" -q >/dev/null; done
 if ! gcloud secrets describe grafana-admin-password --project "$PROJECT" >/dev/null 2>&1; then
-  openssl rand -base64 18 | tr -d '/+=' | gcloud secrets create grafana-admin-password --data-file=- --project "$PROJECT"; fi
+  openssl rand -base64 18 | tr -d '/+=\n' | gcloud secrets create grafana-admin-password --data-file=- --project "$PROJECT"; fi
 gcloud secrets add-iam-policy-binding grafana-admin-password --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor --project "$PROJECT" -q >/dev/null
 TAG="$REGION-docker.pkg.dev/$PROJECT/$REPO/grafana:11.4.0"
 gcloud builds submit "$HERE/../grafana" --tag "$TAG" --project "$PROJECT" --quiet
