@@ -9,6 +9,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 "$HERE/22_deploy_checkout.sh" baseline
 "$HERE/23_deploy_storefront.sh"
 "$HERE/30_alerts.sh"
+"$HERE/31_slos.sh"
 "$HERE/32_grafana.sh"
 "$HERE/34_pagerduty.sh"
 "$HERE/35_dashboard.sh"

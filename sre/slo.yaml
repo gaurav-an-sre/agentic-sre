@@ -33,6 +33,12 @@ services:
         description: "share of checkout attempts that produce an approved order (decline_rate is the burn)"
         target: 0.98           # a sustained decline_rate >2% is a page, not a bad day
         window_days: 30
+        indicator:
+          type: log_ratio      # declines are HTTP 2xx: only the order_decision log sees them
+          total_log_metric: checkout_orders_total
+          bad_log_metric: checkout_orders_declined
+          log_filter: 'resource.type="cloud_run_revision" AND resource.labels.service_name="checkout" AND jsonPayload.event="order_decision"'
+          bad_filter: ' AND jsonPayload.outcome="declined"'
 
 # burn rates: fast burn = page now (30m window), slow burn = ticket/Slack (6h window)
 burn_rates:
