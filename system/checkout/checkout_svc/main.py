@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
@@ -13,9 +15,8 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field
-
 from payments.authorize_request import build_authorization_request
+from pydantic import BaseModel, Field
 
 from . import db
 from .evidence import MetricsRecorder, append_jsonl, read_jsonl
@@ -24,6 +25,7 @@ from .pricing import quote
 from .watchdog import Watchdog, WatchdogThread
 
 logger = logging.getLogger("checkout_svc")
+logger.setLevel(logging.INFO)  # order_decision events are the order_success SLO's only signal
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 metrics = MetricsRecorder()
 watchdog_thread: WatchdogThread | None = None
@@ -133,6 +135,17 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Storefront Incident Demo", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def request_id(request: Request, call_next):
+    """X-Request-ID in, X-Request-ID out; generated at the edge when absent. Ends up in
+    payments.jsonl / orders.jsonl and on the call to payments-api, so one click is one id."""
+    rid = request.headers.get("x-request-id") or f"req_{uuid.uuid4().hex[:12]}"
+    request.state.request_id = rid
+    resp = await call_next(request)
+    resp.headers["X-Request-ID"] = rid
+    return resp
+
+
 @app.get("/", response_class=HTMLResponse)
 def storefront(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
@@ -164,22 +177,29 @@ def quote_cart(cart_request: CartRequest) -> dict[str, Any]:
 
 
 @app.post("/api/checkout")
-def checkout(cart_request: CartRequest) -> dict[str, Any]:
+def checkout(cart_request: CartRequest, request: Request) -> dict[str, Any]:
     started = time.perf_counter()
+    rid = getattr(request.state, "request_id", "")
     items = _cart_items(cart_request)
     customer_quote = quote(items)
     authorization = build_authorization_request(items)
-    result = authorize(authorization, customer_quote.total_cents)
+    result = authorize(authorization, customer_quote.total_cents, request_id=rid)
     outcome = "succeeded" if result["decision"] == "approved" else "declined"
     reason = result["reason"]
     timestamp = _timestamp()
     order_id = db.create_order(timestamp, outcome, reason, customer_quote.total_cents)
+    # structured decision record: what the order_success SLO burns on (declines are 2xx,
+    # so request metrics can't see them - Cloud Logging -> log-based metrics does)
+    logger.info(json.dumps({"event": "order_decision", "order_id": order_id, "outcome": outcome,
+                            "reason": reason, "total_cents": customer_quote.total_cents,
+                            "request_id": rid}))
     latency_ms = round((time.perf_counter() - started) * 1000, 2)
     append_jsonl(
         "payments.jsonl",
         {
             "timestamp": timestamp,
             "order_id": order_id,
+            "request_id": rid,
             "requested_amount_cents": result["requested_amount_cents"],
             "reconciliation_amount_cents": result["reconciliation_amount_cents"],
             "decision": result["decision"],
@@ -190,6 +210,7 @@ def checkout(cart_request: CartRequest) -> dict[str, Any]:
         "orders.jsonl",
         {
             "order_id": order_id,
+            "request_id": rid,
             "timestamp": timestamp,
             "line_items": items,
             "quote": customer_quote.as_dict(),

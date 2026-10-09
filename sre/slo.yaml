@@ -1,0 +1,50 @@
+# Service Level Objectives - authored for the customer's e-commerce stack.
+# These are the SLOs the SRE practice started with: few, measurable, business-shaped.
+# 31_slos.sh turns each entry into Cloud Monitoring burn-rate alert policies.
+
+services:
+
+  payments-api:
+    # the money path: transfers, account debits. 5xx on this service = customers can't pay.
+    slos:
+      - name: availability
+        description: "fraction of successful (non-5xx) requests over the window"
+        target: 0.999          # 99.9% - 1000 min error budget per 30d
+        window_days: 30
+        indicator:
+          good: 'metric.type="run.googleapis.com/request_count" AND metric.label.response_code_class!="5xx"'
+          total: 'metric.type="run.googleapis.com/request_count"'
+      - name: p95_latency_ms
+        description: "95th percentile request latency at the edge"
+        target_ms: 1500
+        window_days: 30
+
+  checkout:
+    # "green dashboards, angry customers" lives here: pods can be healthy while orders fail.
+    # hence a business SLO (order success) next to the technical one.
+    slos:
+      - name: availability
+        target: 0.999
+        window_days: 30
+        indicator:
+          good: 'metric.type="run.googleapis.com/request_count" AND metric.label.response_code_class!="5xx"'
+          total: 'metric.type="run.googleapis.com/request_count"'
+      - name: order_success
+        description: "share of checkout attempts that produce an approved order (decline_rate is the burn)"
+        target: 0.98           # a sustained decline_rate >2% is a page, not a bad day
+        window_days: 30
+        indicator:
+          type: log_ratio      # declines are HTTP 2xx: only the order_decision log sees them
+          total_log_metric: checkout_orders_total
+          bad_log_metric: checkout_orders_declined
+          log_filter: 'resource.type="cloud_run_revision" AND resource.labels.service_name="checkout" AND jsonPayload.event="order_decision"'
+          bad_filter: ' AND jsonPayload.outcome="declined"'
+
+# burn rates: fast burn = page now (30m window), slow burn = ticket/Slack (6h window)
+burn_rates:
+  fast:
+    window_minutes: 30
+    factor: 14.4       # consumes the 30d budget in 2 days -> page
+  slow:
+    window_minutes: 360
+    factor: 6.0        # consumes the budget in ~5 days -> ticket

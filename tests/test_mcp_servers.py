@@ -7,7 +7,6 @@ import json
 
 import pytest
 
-from agents.common import control_plane as cp
 from agents.common import tools as t
 from agents.common.control_plane import approve
 from mcp_servers import incident, observability, release, remediation
@@ -32,22 +31,22 @@ def test_read_tools_return_citeable_ids() -> None:
 
 
 def test_shift_traffic_denied_without_approval(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(t, "PROPOSALS", tmp_path)
+    monkeypatch.setenv("PROPOSALS_DIR", str(tmp_path))
     good = next(d["revision"] for d in t.bundle.deployments() if d.get("revision"))
     res = remediation.shift_traffic("P-nope", "payments-api", good)
     assert res["denied"] and "not approved" in res["reason"]
 
 
 def test_shift_traffic_requires_matching_allowlisted_revision(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(t, "PROPOSALS", tmp_path)
-    monkeypatch.setattr(cp, "PROPOSALS", tmp_path)
+    monkeypatch.setenv("PROPOSALS_DIR", str(tmp_path))
     revs = [d["revision"] for d in t.bundle.deployments() if d.get("revision")]
     target = revs[0]
     pid = t.propose_remediation("rb", "rollback", "why", [t.bundle.deployments()[-1]["id"]], "redeploy", target)["proposal_id"]
-    assert remediation.shift_traffic(pid, "payments-api", target)["denied"]  # pending
+    inc = t.bundle.incident()["id"]
+    assert remediation.shift_traffic(pid, "payments-api", target, incident_id=inc)["denied"]  # pending
     approve(pid, "oncall@example.com")
-    assert remediation.shift_traffic(pid, "payments-api", "payments-api-99999-zzz")["denied"]  # wrong target
-    ok = remediation.shift_traffic(pid, "payments-api", target)
+    assert remediation.shift_traffic(pid, "payments-api", "payments-api-99999-zzz", incident_id=inc)["denied"]  # wrong target
+    ok = remediation.shift_traffic(pid, "payments-api", target, incident_id=inc)
     assert "simulated" in ok["result"]
     assert json.loads((tmp_path / f"{pid}.json").read_text())["status"] == "applied"
 

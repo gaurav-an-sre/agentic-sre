@@ -79,8 +79,9 @@ scribe = LlmAgent(
 
 applier = LlmAgent(
     name="applier", model=MODEL, tools=APPLY_T, **CB,
-    instruction="Apply the proposal id you are given (apply_remediation, or shift_traffic with its service and "
-                "target revision) and report the result verbatim.",
+    instruction="Apply the proposal id you are given (apply_remediation, or shift_traffic with its service, "
+                "target revision and the open incident_id). With shift_traffic call dry_run=true first and show "
+                "the plan; never pass override_hold yourself - only a human may. Report results verbatim.",
 )
 
 root_agent = SequentialAgent(name="sre_v2", sub_agents=[collectors, investigator, scribe])

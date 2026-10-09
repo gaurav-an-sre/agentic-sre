@@ -30,6 +30,7 @@ make v1                          # watch it fixate / dump logs / try to apply
 make v2                          # collectors -> investigator proposes P-xxxx -> scribe
 make apply P=P-xxxx              # PolicyDeny (not approved)
 make approve P=P-xxxx && make apply P=P-xxxx
+make red-button                   # pause all agent actuation (file flag locally; 80_red_button.sh on GCP)
 make audit
 ```
 
