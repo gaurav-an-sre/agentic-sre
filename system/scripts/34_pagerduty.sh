@@ -7,6 +7,7 @@ CH="$(gcloud monitoring channels list --project "$PROJECT" --filter 'displayName
 if [[ -z "$CH" ]]; then
   CH="$(gcloud monitoring channels create --display-name "PagerDuty SRE on-call" --type pagerduty \
         --channel-labels "service_key=$PAGERDUTY_KEY" --project "$PROJECT" --format 'value(name)')"; fi
-for p in $(gcloud monitoring policies list --project "$PROJECT" --filter 'userLabels.service="payments-api"' --format 'value(name)'); do
+# every policy we manage pages on-call: payments-api/checkout 5xx+latency AND the SLO burn policies
+for p in $(gcloud monitoring policies list --project "$PROJECT" --filter 'userLabels.service:*' --format 'value(name)'); do
   gcloud monitoring policies update "$p" --add-notification-channels "$CH" --project "$PROJECT" -q >/dev/null; done
 echo "alert policies page PagerDuty via $CH"
