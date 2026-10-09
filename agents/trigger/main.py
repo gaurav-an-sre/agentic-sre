@@ -56,7 +56,9 @@ async def pagerduty(req: Request, x_pagerduty_signature: str = Header(default=""
 
 
 @app.get("/proposals/{proposal_id}")
-def get_proposal(proposal_id: str) -> dict:
+def get_proposal(proposal_id: str, x_approve_token: str = Header(default="")) -> dict:
+    if not APPROVE_TOKEN or not hmac.compare_digest(APPROVE_TOKEN, x_approve_token):
+        raise HTTPException(401, "bad approve token")
     rec = store.load(proposal_id)
     if rec is None:
         raise HTTPException(404, "unknown proposal")

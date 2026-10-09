@@ -68,14 +68,22 @@ def shift_traffic(proposal_id: str, service: str, revision: str, percent: int = 
     if dry_run:
         audit("DryRun", tool="shift_traffic", proposal=proposal_id, plan=plan)
         return {"dry_run": True, "would_apply": True, "plan": plan}
-    if gcp_mode():
-        result = gcp_api.shift_traffic(PROJECT, REGION, service, revision, percent)
-    else:
-        result = {"result": f"simulated: {service} traffic {percent}% -> {revision}"}
-    rec = proposals.load(proposal_id)
-    rec.update(status="applied", applied_ts=datetime.now(UTC).isoformat(), apply_result=result,
-               incident_id=incident_id, override_hold=override_hold or None)
-    proposals.save(rec)
+    # atomic claim: only one caller may move an approved proposal to 'applying'; a second
+    # concurrent shift_traffic is denied instead of passing the same checks in parallel
+    rec = proposals.claim(proposal_id)
+    if rec is None:
+        audit("PolicyDeny", tool="shift_traffic", proposal=proposal_id, reason="already claimed or applied")
+        return {"denied": True, "reason": "already being applied by another caller"}
+    try:
+        if gcp_mode():
+            result = gcp_api.shift_traffic(PROJECT, REGION, service, revision, percent)
+        else:
+            result = {"result": f"simulated: {service} traffic {percent}% -> {revision}"}
+        rec.update(status="applied", applied_ts=datetime.now(UTC).isoformat(), apply_result=result,
+                   incident_id=incident_id, override_hold=override_hold or None)
+    finally:
+        proposals.save(rec)
+        proposals.release(proposal_id)
     audit("Apply", tool="shift_traffic", proposal=proposal_id, service=service, revision=revision, percent=percent,
           incident=incident_id, override_hold=override_hold or None)
     return {**result, "proposal": proposal_id, "plan": plan}

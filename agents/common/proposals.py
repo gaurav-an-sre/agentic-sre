@@ -57,11 +57,53 @@ def save(rec: dict) -> None:
     (_dir() / f"{rec['id']}.json").write_text(json.dumps(rec, indent=1))
 
 
+def claim(proposal_id: str) -> dict | None:
+    """Atomically move an approved proposal to 'applying'; returns the record, or None if it was
+    already claimed/applied/unknown. Two concurrent callers cannot both win: GCS uses a
+    metageneration precondition, local files an O_EXCL lock file."""
+    if _mode() == "gcs":
+        blob = _bucket().blob(f"{_PREFIX}/{proposal_id}.json")
+        if not blob.exists():
+            return None
+        rec = json.loads(blob.download_as_text())
+        if rec.get("status") != "approved":
+            return None
+        rec["status"] = "applying"
+        try:
+            from google.api_core.exceptions import PreconditionFailed
+        except ImportError:
+            PreconditionFailed = type(None)  # unreachable: gcs mode implies the lib is installed
+        try:
+            blob.upload_from_string(json.dumps(rec, indent=1),
+                                    if_metageneration_match=blob.metageneration,
+                                    content_type="application/json")
+        except PreconditionFailed:
+            return None  # lost the race: another caller already claimed it
+        return rec
+    lock = _dir() / f"{proposal_id}.claim"
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+    except FileExistsError:
+        return None
+    rec = load(proposal_id)
+    if rec is None or rec.get("status") != "approved":
+        lock.unlink(missing_ok=True)
+        return None
+    rec["status"] = "applying"
+    save(rec)
+    return rec
+
+
+def release(proposal_id: str) -> None:
+    (_dir() / f"{proposal_id}.claim").unlink(missing_ok=True)
+
+
 def iter_records() -> Iterator[dict]:
     if _mode() == "gcs":
         for blob in _bucket().list_blobs(prefix=f"{_PREFIX}/"):
             if blob.name.endswith(".json"):
                 yield json.loads(blob.download_as_text())
         return
-    for p in sorted(_dir().glob("P-*.json")):
+    for p in sorted(f for f in _dir().glob("P-*.json") if f.suffix == ".json"):
         yield json.loads(p.read_text())

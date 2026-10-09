@@ -23,10 +23,12 @@ def authorize(
     requested = int(request["amount_cents"])
     out = {"requested_amount_cents": requested,
            "reconciliation_amount_cents": reconciliation_total_cents}
-    if PAYMENTS_URL:
-        return _authorize_remote(requested, request_id, out)
+    # the checkout's own arithmetic guard runs before any provider call: a cart whose
+    # authorization request doesn't match the quote never reaches the PSP
     if requested != reconciliation_total_cents:
         return {"decision": "declined", "reason": "amount_mismatch", **out}
+    if PAYMENTS_URL:
+        return _authorize_remote(requested, request_id, out)
     return {"decision": "approved", "reason": None, **out}
 
 

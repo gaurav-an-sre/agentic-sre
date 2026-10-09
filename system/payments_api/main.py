@@ -128,6 +128,14 @@ async def get_account(account_id: str) -> dict:
 async def create_transfer(body: TransferIn) -> dict:
     tid = body.idempotency_key or f"tr_{uuid.uuid4().hex[:12]}"
     try:
+        async with pool.connection() as conn:
+            existing = await (await conn.execute(
+                "SELECT transfer_id, amount, currency FROM transfers WHERE transfer_id=%s", (tid,))
+            ).fetchone()
+        if existing:
+            return {"transfer_id": existing["transfer_id"], "status": "settled",
+                    "amount": str(existing["amount"]), "currency": existing["currency"],
+                    "idempotent_replay": True}
         async with pool.connection() as conn, conn.transaction():
             src = await (await conn.execute(
                 "SELECT balance FROM accounts WHERE account_id=%s FOR UPDATE", (body.from_account,))

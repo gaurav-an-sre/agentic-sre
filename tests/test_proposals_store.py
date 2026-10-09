@@ -43,3 +43,19 @@ def test_apply_simulated_marks_record_applied(store_dir):
     cp.approve(pid, "oncall@retailer")
     t.apply_remediation(pid)
     assert proposals.load(pid)["status"] == "applied"
+
+
+def test_claim_is_atomic_only_one_caller_wins():
+    pid = _pending()
+    cp.approve(pid, "oncall@retailer")
+    rec = proposals.claim(pid)
+    assert rec["status"] == "applying"
+    assert proposals.claim(pid) is None          # second concurrent caller loses
+    proposals.save({**proposals.load(pid), "status": "applied"})
+    proposals.release(pid)
+    assert proposals.claim(pid) is None          # applied proposals can't be claimed again
+
+
+def test_dry_run_style_claim_never_touches_pending():
+    _pending("P-pend")
+    assert proposals.claim("P-pend") is None     # only approved proposals may be claimed

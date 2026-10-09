@@ -4,6 +4,7 @@ shopper click shows up as one id in Cloud Logging across storefront -> checkout 
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -64,7 +65,7 @@ def home(request: Request) -> str:
         return f"<h1>storefront</h1><p>upstream unreachable: {exc}</p>"
     rows = "".join(f"<tr><td>{p['id']}</td><td>{p['name']}</td><td>{p['price_cents']/100:.2f}</td></tr>"
                    for p in products)
-    return PAGE % {"rows": rows, "rid": request.state.request_id, "up": UPSTREAM}
+    return PAGE % {"rows": rows, "rid": html.escape(request.state.request_id, quote=True), "up": UPSTREAM}
 
 
 @app.get("/api/products")
