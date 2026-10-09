@@ -21,7 +21,10 @@ const esc = (s) => String(s).replace(/[&<>"']/g,
 // payments idempotency key, so retrying a timed-out order replays instead of recharging
 const newReqId = () => "req_" + Array.from(crypto.getRandomValues(new Uint8Array(6)),
   (b) => b.toString(16).padStart(2, "0")).join("");
-let checkoutRid = null, ridItemsKey = "";
+// cartKey -> request id whose payment outcome is still uncertain; persists across cart
+// edits so restoring a cart replays the same idempotency key instead of minting a new one
+let checkoutRid = null;
+const pendingRids = {};
 
 let products = [], cart = {};   // id -> qty
 
@@ -77,7 +80,8 @@ $("checkoutBtn").onclick = async () => {
   // the id is bound to this cart: reopening checkout after a timeout keeps it (a resubmit
   // replays instead of recharging); a changed cart mints a fresh one
   const key = JSON.stringify(items);
-  if (key !== ridItemsKey) { checkoutRid = newReqId(); ridItemsKey = key; }
+  if (!pendingRids[key]) pendingRids[key] = newReqId();
+  checkoutRid = pendingRids[key];
   $("modal").hidden = false;
   $("quoteRows").innerHTML = "<p class='loading'>Fetching quote…</p>";
   try {
@@ -122,7 +126,7 @@ $("checkoutForm").onsubmit = async (e) => {
     $("confirmRid").textContent = rid || "—";
     $("confirmRid2").textContent = rid || "";
     $("confirm").hidden = false;
-    if (ok) { cart = {}; render(); checkoutRid = null; ridItemsKey = ""; }
+    if (ok) { cart = {}; render(); delete pendingRids[JSON.stringify(items)]; checkoutRid = null; }
   } catch (err) {
     // payment state unknown on a timeout - do NOT claim "nothing was charged". A retry is
     // safe because we resend the same X-Request-ID, which is the PSP idempotency key.
