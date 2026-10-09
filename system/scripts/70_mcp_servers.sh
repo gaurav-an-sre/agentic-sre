@@ -13,7 +13,7 @@ AGENT_SA="sre-agent@$PROJECT.iam.gserviceaccount.com"
 gcloud iam service-accounts describe "$AGENT_SA" --project "$PROJECT" >/dev/null 2>&1 || \
   gcloud iam service-accounts create sre-agent --display-name "SRE agent squad (Agent Engine caller)" --project "$PROJECT"
 # the agent runtime also reads/writes the shared proposal store (propose, gate, dry-run)
-gsutil iam ch "serviceAccount:$AGENT_SA:objectAdmin" "gs://$PROJECT-payments-demo" -q || true
+gsutil -q iam ch "serviceAccount:$AGENT_SA:objectAdmin" "gs://$PROJECT-payments-demo" || true
 deploy() { # name roles...
   local name="$1"; shift
   local sa="$name@$PROJECT.iam.gserviceaccount.com"
@@ -23,7 +23,7 @@ deploy() { # name roles...
   EXTRA=""
   if [ "$name" = "remediation-mcp" ]; then
     EXTRA=",PROPOSAL_STORE=gcs,PROPOSAL_BUCKET=$PROJECT-payments-demo"
-    gsutil iam ch "serviceAccount:$sa:objectAdmin" "gs://$PROJECT-payments-demo" -q
+    gsutil -q iam ch "serviceAccount:$sa:objectAdmin" "gs://$PROJECT-payments-demo"
   fi
   gcloud run deploy "$name" --image "$TAG" --region "$REGION" --project "$PROJECT" --service-account "$sa" \
     --no-allow-unauthenticated --ingress internal --min-instances 0 --max-instances 2 --cpu 1 --memory 512Mi \
