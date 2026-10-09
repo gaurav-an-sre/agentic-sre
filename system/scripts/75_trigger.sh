@@ -20,7 +20,7 @@ gcloud iam service-accounts describe "$SA" --project "$PROJECT" >/dev/null 2>&1 
   gcloud iam service-accounts create sre-trigger --display-name "SRE human bridge (PagerDuty + approve)" --project "$PROJECT"
 gcloud projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role roles/aiplatform.user -q >/dev/null
 # proposals live in GCS in the cloud deployment: this service writes approvals, so it needs objectAdmin
-gsutil iam ch "serviceAccount:$SA:objectAdmin" "gs://$PROJECT-payments-demo" -q
+gsutil -q iam ch "serviceAccount:$SA:objectAdmin" "gs://$PROJECT-payments-demo"
 for s in pagerduty-webhook-secret approve-token; do
   gcloud secrets add-iam-policy-binding "$s" --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor --project "$PROJECT" -q >/dev/null
 done
