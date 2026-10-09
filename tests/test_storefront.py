@@ -60,7 +60,15 @@ def test_upstream_down_is_a_502_not_a_traceback(client, monkeypatch):
 
 def test_homepage_lists_products(client):
     page = client.get("/")
-    assert "Rice 5kg" in page.text and "request id" in page.text
+    assert "This week's picks" in page.text          # client-rendered catalog shell loads
+    assert 'meta name="x-req"' in page.text           # page carries its own request id for display
+    assert "Rice 5kg" in str(client.get("/api/products").json())
+
+
+def test_inbound_request_id_sanitized_in_page(client):
+    """Reflected header must not reach the HTML unescaped (XSS guard)."""
+    page = client.get("/", headers={"X-Request-ID": 'x"><script>alert(1)</script>'})
+    assert "<script>alert" not in page.text
 
 
 def test_gateway_mismatch_declines_before_any_remote_call(monkeypatch):

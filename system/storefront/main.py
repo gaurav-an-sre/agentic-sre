@@ -1,4 +1,4 @@
-"""storefront: the public edge of the demo shop. Serves the catalog, forwards cart checkouts to the
+"""storefront: the public edge of the demo shop. Serves the catalog page, forwards cart checkouts to the
 checkout service, and is where X-Request-ID starts when the caller didn't bring one - so a single
 shopper click shows up as one id in Cloud Logging across storefront -> checkout -> payments-api."""
 
@@ -11,21 +11,18 @@ import os
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 UPSTREAM = os.environ.get("CHECKOUT_URL", "http://localhost:8000").rstrip("/")
+STATIC = Path(__file__).parent / "static"
 app = FastAPI(title="storefront")
-
-PAGE = """<!doctype html><meta charset=utf-8><title>lotuss demo storefront</title>
-<style>body{font-family:sans-serif;max-width:760px;margin:2rem auto}table{border-collapse:collapse}
-td,th{border:1px solid #ccc;padding:.4rem .8rem}h3{color:#888}</style>
-<h1>Lotuss (demo) storefront</h1><h3>request id %(rid)s &middot; upstream %(up)s</h3>
-<table><tr><th>id</th><th>product</th><th>price</th></tr>%(rows)s</table>
-<p>POST /api/checkout {"items":[{"product_id":1,"quantity":2}]}</p>"""
+INDEX = (STATIC / "index.html").read_text()
 
 
 def _log(level: int, msg: str, **fields: object) -> None:
@@ -59,18 +56,19 @@ def post_checkout(payload: dict[str, Any], rid: str) -> httpx.Response:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> str:
-    try:
-        products = get_products()
-    except httpx.HTTPError as exc:
-        return f"<h1>storefront</h1><p>upstream unreachable: {exc}</p>"
-    rows = "".join(f"<tr><td>{p['id']}</td><td>{p['name']}</td><td>{p['price_cents']/100:.2f}</td></tr>"
-                   for p in products)
-    return PAGE % {"rows": rows, "rid": html.escape(request.state.request_id, quote=True), "up": UPSTREAM}
+    # the page shows its own request id via a meta tag - it is caller-influenced input, so
+    # it goes through html.escape before rendering (XSS guard on a reflected header)
+    rid = html.escape(getattr(request.state, "request_id", ""), quote=True)
+    return INDEX.replace("</head>", f'<meta name="x-req" content="{rid}"></head>')
 
 
 @app.get("/api/products")
 def products() -> Any:
-    return get_products()
+    try:
+        return get_products()
+    except httpx.HTTPError as exc:
+        return JSONResponse({"status": "error", "reason": "catalog_unreachable",
+                             "detail": str(exc)}, status_code=502)
 
 
 @app.post("/api/checkout")
@@ -87,3 +85,6 @@ async def checkout(request: Request) -> JSONResponse:
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok", "upstream": UPSTREAM}
+
+
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
