@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -186,6 +187,11 @@ def checkout(cart_request: CartRequest, request: Request) -> dict[str, Any]:
     reason = result["reason"]
     timestamp = _timestamp()
     order_id = db.create_order(timestamp, outcome, reason, customer_quote.total_cents)
+    # structured decision record: what the order_success SLO burns on (declines are 2xx,
+    # so request metrics can't see them - Cloud Logging -> log-based metrics does)
+    logger.info(json.dumps({"event": "order_decision", "order_id": order_id, "outcome": outcome,
+                            "reason": reason, "total_cents": customer_quote.total_cents,
+                            "request_id": rid}))
     latency_ms = round((time.perf_counter() - started) * 1000, 2)
     append_jsonl(
         "payments.jsonl",

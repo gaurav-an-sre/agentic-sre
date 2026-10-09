@@ -38,7 +38,7 @@ mcp-%:            ## make mcp-observability | mcp-release | mcp-incident | mcp-r
 	$(PY) -m mcp_servers $*
 # --- GCP (needs PROJECT=...) ---------------------------------------------------
 deploy-system:    ## APIs, Cloud SQL, payments-api, checkout, alerts, dashboard, Grafana, PagerDuty channel
-	for s in 00_enable_apis 10_provision 20_deploy 22_deploy_checkout 30_alerts 35_dashboard 32_grafana 34_pagerduty; do system/scripts/$$s.sh || exit 1; done
+	for s in 00_enable_apis 10_provision 20_deploy 22_deploy_checkout 30_alerts 31_slos 35_dashboard 32_grafana 34_pagerduty; do system/scripts/$$s.sh || exit 1; done
 deploy-mcp:       ## 4 MCP servers on Cloud Run, one SA each, internal ingress
 	system/scripts/70_mcp_servers.sh
 deploy-agent:     ## v2 squad on Vertex AI Agent Engine + PagerDuty webhook trigger
