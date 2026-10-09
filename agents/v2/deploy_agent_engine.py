@@ -30,7 +30,7 @@ remote = agent_engines.create(
         "RELEASE_MCP_URL": os.environ.get("RELEASE_MCP_URL", ""),
         "INCIDENT_MCP_URL": os.environ.get("INCIDENT_MCP_URL", ""),
         "REMEDIATION_MCP_URL": os.environ.get("REMEDIATION_MCP_URL", ""),
-        "PROPOSAL_STORE": os.environ.get("PROPOSAL_STORE", "local"),
+        "PROPOSAL_STORE": os.environ.get("PROPOSAL_STORE", "gcs"),
         "PROPOSAL_BUCKET": os.environ.get("PROPOSAL_BUCKET", f"{PROJECT}-payments-demo"),
     },
 )

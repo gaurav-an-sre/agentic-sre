@@ -61,3 +61,15 @@ def test_upstream_down_is_a_502_not_a_traceback(client, monkeypatch):
 def test_homepage_lists_products(client):
     page = client.get("/")
     assert "Rice 5kg" in page.text and "request id" in page.text
+
+
+def test_gateway_mismatch_declines_before_any_remote_call(monkeypatch):
+    """The checkout's own arithmetic guard runs before the PSP: a promo mismatch never reaches it."""
+    import importlib
+    gw = importlib.import_module("checkout_svc.gateway")
+    monkeypatch.setattr(gw, "PAYMENTS_URL", "https://payments.example")
+    called = []
+    monkeypatch.setattr(gw.httpx, "post", lambda *a, **k: called.append(1))
+    out = gw.authorize({"amount_cents": 1000}, 1)
+    assert out["decision"] == "declined" and out["reason"] == "amount_mismatch"
+    assert not called  # no PSP call happened
