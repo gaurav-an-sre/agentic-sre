@@ -69,6 +69,26 @@ carry ids (Cloud Logging insertId, revision name, alert policy id) so the citati
 `SRE_TOOLS=mcp` switches the v2 squad from in-process functions to `McpToolset`s; the squad, prompts, control
 plane and evals are unchanged - which is also why the same servers serve a Claude Agent SDK harness.
 
+## Controls added after the first live denial (pre-flight on the write path)
+
+The approval gate alone turned out to be binary: when on-call asked the agent to "just apply it" the gate
+refused (good), but the human had no preview of blast radius, nothing stopped two remediations racing, and a
+rollback could land in the middle of a promo peak. `mcp_servers/safety.py` adds, below the model:
+
+| Control | What it does | Where |
+|---|---|---|
+| `dry_run=true` | Returns the plan (current split -> target) and every check result; mutates nothing | `shift_traffic` |
+| Justification | `incident_id` must be the open incident; resolved or unknown incidents are denied | `safety.justification` |
+| Concurrent-action hold | Another proposal applied inside `CONCURRENT_WINDOW_MIN` (10) -> `held`, until a human passes `override_hold=<name>` | `safety.concurrent_action` |
+| Change-freeze hold | `CHANGE_FREEZE_HOURS=18-23` (Asia/Bangkok) -> `held`; promo nights are humans-only unless overridden | `safety.change_freeze` |
+| Red button | `make red-button` locally / `system/scripts/80_red_button.sh on` on GCP pauses all agent actuation; enforced in the agent callback and in remediation-mcp | `safety.red_button` |
+
+These are the controls Google SRE's paper on AI in operations calls dry-run, justification verification,
+concurrent-action check and the "Red Button" (https://sre.google/resources/practices-and-processes/ai-engineering-reliable-operations/).
+On its autonomy ladder: v1 is L1 (assisted investigation), v2 is L2 (human approves, system actuates).
+L3 (auto-approve rollback for one alert class on non-payment services) is the agreed next step, gated on the
+replay suite - not claimed.
+
 ## Gemini/ADK -> Claude Agent SDK mapping
 | Concern | ADK (v2) | Claude Agent SDK (sre-agent) |
 |---|---|---|

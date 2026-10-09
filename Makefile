@@ -29,6 +29,10 @@ evals:
 	$(PY) -m evals.run_evals
 audit:
 	tail -n 20 audit/tool_calls.jsonl
+red-button:       ## pause all agent actuation locally (make red-button-off to resume); GCP: system/scripts/80_red_button.sh on|off
+	echo "pressed $$(date -u +%FT%TZ) by $$USER" > audit/RED_BUTTON
+red-button-off:
+	rm -f audit/RED_BUTTON
 # --- MCP servers locally (bundle source) --------------------------------------
 mcp-%:            ## make mcp-observability | mcp-release | mcp-incident | mcp-remediation  (PORT=8081..)
 	$(PY) -m mcp_servers $*

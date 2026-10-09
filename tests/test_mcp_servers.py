@@ -44,10 +44,11 @@ def test_shift_traffic_requires_matching_allowlisted_revision(tmp_path, monkeypa
     revs = [d["revision"] for d in t.bundle.deployments() if d.get("revision")]
     target = revs[0]
     pid = t.propose_remediation("rb", "rollback", "why", [t.bundle.deployments()[-1]["id"]], "redeploy", target)["proposal_id"]
-    assert remediation.shift_traffic(pid, "payments-api", target)["denied"]  # pending
+    inc = t.bundle.incident()["id"]
+    assert remediation.shift_traffic(pid, "payments-api", target, incident_id=inc)["denied"]  # pending
     approve(pid, "oncall@example.com")
-    assert remediation.shift_traffic(pid, "payments-api", "payments-api-99999-zzz")["denied"]  # wrong target
-    ok = remediation.shift_traffic(pid, "payments-api", target)
+    assert remediation.shift_traffic(pid, "payments-api", "payments-api-99999-zzz", incident_id=inc)["denied"]  # wrong target
+    ok = remediation.shift_traffic(pid, "payments-api", target, incident_id=inc)
     assert "simulated" in ok["result"]
     assert json.loads((tmp_path / f"{pid}.json").read_text())["status"] == "applied"
 

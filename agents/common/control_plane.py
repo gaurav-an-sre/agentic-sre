@@ -1,7 +1,8 @@
 """v2 control plane: ADK callbacks that run around every tool call, independent of the model.
 
 - audit: every tool call and result -> audit/tool_calls.jsonl (one line each)
-- policy gate: apply_remediation is denied unless the proposal file says "approved"
+- policy gate: apply_remediation / shift_traffic are denied unless the proposal file says "approved"
+- red button: both are denied while audit/RED_BUTTON exists or AGENT_ACTUATION_PAUSED=1
 - citation gate: propose_remediation is denied if any evidence ref is not in the bundle
 The model cannot talk its way past these; they are plain Python, not prompt text.
 """
@@ -30,6 +31,10 @@ def before_tool(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext)
     """Return a dict to SHORT-CIRCUIT the tool (ADK uses it as the tool result); None to allow."""
     audit("PreToolUse", agent=tool_context.agent_name, tool=tool.name, args=args)
     if tool.name in {"apply_remediation", "shift_traffic"}:
+        from mcp_servers.safety import red_button
+        if (stop := red_button()) and not args.get("dry_run"):
+            audit("PolicyDeny", tool=tool.name, reason=stop)
+            return {"denied": True, "reason": stop}
         pid = str(args.get("proposal_id", ""))
         p = PROPOSALS / f"{pid}.json"
         status = json.loads(p.read_text())["status"] if p.exists() else "unknown"
