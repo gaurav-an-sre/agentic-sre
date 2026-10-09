@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
 import uuid
 from datetime import UTC, datetime
 from statistics import mean
 
+from agents.common import proposals
 from agents.common.bundle import ROOT, Bundle
 
 PROPOSALS = ROOT / "proposals"
@@ -91,12 +91,11 @@ def propose_remediation(title: str, action: str, rationale: str, evidence_refs: 
     bad = validate_citations(evidence_refs)
     if bad or not evidence_refs:
         return {"error": f"citation check failed: unknown or missing evidence refs {bad}"}
-    PROPOSALS.mkdir(exist_ok=True)
     pid = "P-" + uuid.uuid4().hex[:8]
     rec = {"id": pid, "status": "pending_approval", "created_ts": datetime.now(UTC).isoformat(),
            "title": title, "action": action, "rationale": rationale, "evidence_refs": evidence_refs,
            "rollback_plan": rollback_plan, "target_revision": target_revision}
-    (PROPOSALS / f"{pid}.json").write_text(json.dumps(rec, indent=1))
+    proposals.save(rec)
     return {"proposal_id": pid, "status": "pending_approval",
             "next": f"a human must run: python -m agents.v2.run approve {pid}"}
 
@@ -104,10 +103,9 @@ def propose_remediation(title: str, action: str, rationale: str, evidence_refs: 
 def apply_remediation(proposal_id: str) -> dict:
     """Execute an APPROVED proposal. In bundle mode it is simulated; in gcp mode it shifts Cloud Run
     traffic to a revision that already exists in the bundle. Nothing else is ever written."""
-    p = PROPOSALS / f"{proposal_id}.json"
-    if not p.exists():
+    rec = proposals.load(proposal_id)
+    if rec is None:
         return {"error": "unknown proposal"}
-    rec = json.loads(p.read_text())
     if rec["status"] != "approved":
         return {"error": f"proposal {proposal_id} is {rec['status']}, not approved"}
     src = bundle.incident().get("source", {})
@@ -118,7 +116,7 @@ def apply_remediation(proposal_id: str) -> dict:
     else:
         result = {"result": "simulated: " + rec["action"]}
     rec.update(status="applied", applied_ts=datetime.now(UTC).isoformat(), apply_result=result)
-    p.write_text(json.dumps(rec, indent=1))
+    proposals.save(rec)
     return {**result, "proposal": proposal_id}
 
 

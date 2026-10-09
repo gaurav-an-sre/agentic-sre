@@ -21,6 +21,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from agents.common import proposals as proposal_store
 from agents.common import tools as bundle_tools
 from agents.common.bundle import ROOT
 
@@ -49,15 +50,18 @@ def justification(incident_id: str) -> str | None:
 def concurrent_action(proposal_id: str, proposals: Path | None = None) -> str | None:
     window = timedelta(minutes=int(os.environ.get("CONCURRENT_WINDOW_MIN", "10")))
     now = datetime.now(UTC)
-    for p in (proposals or bundle_tools.PROPOSALS).glob("P-*.json"):
-        if p.stem == proposal_id:
+    if proposals is not None:
+        records = (json.loads(p.read_text()) for p in proposals.glob("P-*.json"))
+    else:
+        records = proposal_store.iter_records()
+    for rec in records:
+        if rec.get("id") == proposal_id:
             continue
-        rec = json.loads(p.read_text())
         if rec.get("status") != "applied" or not rec.get("applied_ts"):
             continue
         age = now - datetime.fromisoformat(rec["applied_ts"])
         if age < window:
-            return f"concurrent action: {p.stem} was applied {int(age.total_seconds())}s ago"
+            return f"concurrent action: {rec.get('id')} was applied {int(age.total_seconds())}s ago"
     return None
 
 

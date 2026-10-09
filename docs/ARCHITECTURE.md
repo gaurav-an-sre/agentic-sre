@@ -99,6 +99,16 @@ replay suite - not claimed.
 | Evidence, proposals, approval record, evals | identical files | identical files |
 The model and harness changed; the control plane, bundle format and evals did not. That portability was deliberate (decision 10).
 
+## Shared proposal store and the approve endpoint
+
+Approvals must survive process boundaries: a human approves in one place and three components must see
+it (the agent-side gate, remediation-mcp, the evals). `agents/common/proposals.py` is a tiny store
+with two backends: `local` (files under `proposals/`, used by tests and evals) and `gcs`
+(`gs://PROPOSAL_BUCKET/proposals/P-*.json`) for the cloud deployment. The approve endpoint on the
+trigger service (`POST /approve`, `X-Approve-Token` from Secret Manager) is a **human action, not a
+model action** - it writes the record; nothing model-facing gains a new permission. Wire it to a Slack
+slash command; `GET /proposals/{id}` gives the reviewer the same record the gates see.
+
 ## What is real vs. reference here
 - Customer context, the operating-model problem and the v1 -> v2 lessons: engagement.
 - Code in this repo: anonymised reference implementation; the bundle `INC-2026-1009` is synthetic; `evidence/gcp_snapshot.py` freezes a real Cloud Run incident when a project is set.

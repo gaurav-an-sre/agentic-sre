@@ -14,8 +14,7 @@ CTX = SimpleNamespace(agent_name="test")
 
 @pytest.fixture(autouse=True)
 def _tmp_dirs(tmp_path, monkeypatch):
-    monkeypatch.setattr(t, "PROPOSALS", tmp_path / "proposals")
-    monkeypatch.setattr(cp, "PROPOSALS", tmp_path / "proposals")
+    monkeypatch.setenv("PROPOSALS_DIR", str(tmp_path / "proposals"))
     monkeypatch.setattr(cp, "AUDIT", tmp_path / "audit.jsonl")
 
 

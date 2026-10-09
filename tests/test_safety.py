@@ -17,8 +17,7 @@ INC = t.bundle.incident()["id"]
 
 @pytest.fixture
 def approved(tmp_path, monkeypatch):
-    monkeypatch.setattr(t, "PROPOSALS", tmp_path)
-    monkeypatch.setattr(cp, "PROPOSALS", tmp_path)
+    monkeypatch.setenv("PROPOSALS_DIR", str(tmp_path))
     monkeypatch.setattr(cp, "AUDIT", tmp_path / "audit.jsonl")
     monkeypatch.setattr(safety, "RED_BUTTON_FILE", tmp_path / "RED_BUTTON")
     monkeypatch.delenv("AGENT_ACTUATION_PAUSED", raising=False)

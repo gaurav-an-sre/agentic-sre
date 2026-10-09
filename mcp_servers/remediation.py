@@ -6,11 +6,11 @@ the model is never the control."""
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 
 from mcp.server.mcpserver import MCPServer
 
+from agents.common import proposals
 from agents.common import tools as bundle_tools
 from agents.common.control_plane import audit
 from mcp_servers import gcp_api, safety
@@ -33,8 +33,7 @@ def allowed_revisions(service: str) -> set[str]:
 
 
 def check(proposal_id: str, service: str, revision: str) -> dict | None:
-    p = bundle_tools.PROPOSALS / f"{proposal_id}.json"
-    rec = json.loads(p.read_text()) if p.exists() else {"status": "unknown"}
+    rec = proposals.load(proposal_id) or {"status": "unknown"}
     if rec["status"] != "approved":
         return {"denied": True, "reason": f"proposal {proposal_id} is '{rec['status']}', not approved"}
     if rec.get("target_revision") and rec["target_revision"] != revision:
@@ -73,11 +72,10 @@ def shift_traffic(proposal_id: str, service: str, revision: str, percent: int = 
         result = gcp_api.shift_traffic(PROJECT, REGION, service, revision, percent)
     else:
         result = {"result": f"simulated: {service} traffic {percent}% -> {revision}"}
-    p = bundle_tools.PROPOSALS / f"{proposal_id}.json"
-    rec = json.loads(p.read_text())
+    rec = proposals.load(proposal_id)
     rec.update(status="applied", applied_ts=datetime.now(UTC).isoformat(), apply_result=result,
                incident_id=incident_id, override_hold=override_hold or None)
-    p.write_text(json.dumps(rec, indent=1))
+    proposals.save(rec)
     audit("Apply", tool="shift_traffic", proposal=proposal_id, service=service, revision=revision, percent=percent,
           incident=incident_id, override_hold=override_hold or None)
     return {**result, "proposal": proposal_id, "plan": plan}
