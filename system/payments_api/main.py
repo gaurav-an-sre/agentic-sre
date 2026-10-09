@@ -86,19 +86,22 @@ class TransferIn(BaseModel):
 @app.middleware("http")
 async def access_log(request: Request, call_next):
     t0 = time.perf_counter()
+    rid = request.headers.get("x-request-id") or f"req_{uuid.uuid4().hex[:12]}"
     try:
         resp = await call_next(request)
     except Exception as exc:  # noqa: BLE001 - last-resort guard so the access log line is still emitted
         _log(logging.ERROR, f"{request.method} {request.url.path} -> 500 {type(exc).__name__}: {exc}",
              latency_ms=round((time.perf_counter() - t0) * 1000, 1), status=500,
-             error=type(exc).__name__)
+             error=type(exc).__name__, request_id=rid)
         return JSONResponse({"error": "internal"}, status_code=500)
     ms = round((time.perf_counter() - t0) * 1000, 1)
     stats = pool.get_stats()
     level = logging.ERROR if resp.status_code >= 500 else logging.INFO
     _log(level, f"{request.method} {request.url.path} -> {resp.status_code}", status=resp.status_code,
-         latency_ms=ms, db_pool_in_use=stats.get("pool_size", 0) - stats.get("pool_available", 0),
+         latency_ms=ms, request_id=rid,
+         db_pool_in_use=stats.get("pool_size", 0) - stats.get("pool_available", 0),
          db_pool_size=POOL_SIZE, db_pool_waiting=stats.get("requests_waiting", 0))
+    resp.headers["X-Request-ID"] = rid
     return resp
 
 
@@ -125,25 +128,24 @@ async def get_account(account_id: str) -> dict:
 async def create_transfer(body: TransferIn) -> dict:
     tid = body.idempotency_key or f"tr_{uuid.uuid4().hex[:12]}"
     try:
-        async with pool.connection() as conn:
-            async with conn.transaction():
-                src = await (await conn.execute(
-                    "SELECT balance FROM accounts WHERE account_id=%s FOR UPDATE", (body.from_account,))
-                ).fetchone()
-                if not src:
-                    raise HTTPException(404, "from_account not found")
-                if src["balance"] < body.amount:
-                    raise HTTPException(422, "insufficient funds")
-                await conn.execute("UPDATE accounts SET balance=balance-%s WHERE account_id=%s",
-                                   (body.amount, body.from_account))
-                await conn.execute("UPDATE accounts SET balance=balance+%s WHERE account_id=%s",
-                                   (body.amount, body.to_account))
-                await conn.execute(
-                    "INSERT INTO transfers(transfer_id, from_account, to_account, amount, currency) "
-                    "VALUES (%s,%s,%s,%s,%s) ON CONFLICT (transfer_id) DO NOTHING",
-                    (tid, body.from_account, body.to_account, body.amount, body.currency))
-                # ledger fan-out holds the connection for a bit; this is what makes a small pool hurt
-                await conn.execute("SELECT pg_sleep(%s)", (LEDGER_WRITE_MS / 1000,))
+        async with pool.connection() as conn, conn.transaction():
+            src = await (await conn.execute(
+                "SELECT balance FROM accounts WHERE account_id=%s FOR UPDATE", (body.from_account,))
+            ).fetchone()
+            if not src:
+                raise HTTPException(404, "from_account not found")
+            if src["balance"] < body.amount:
+                raise HTTPException(422, "insufficient funds")
+            await conn.execute("UPDATE accounts SET balance=balance-%s WHERE account_id=%s",
+                               (body.amount, body.from_account))
+            await conn.execute("UPDATE accounts SET balance=balance+%s WHERE account_id=%s",
+                               (body.amount, body.to_account))
+            await conn.execute(
+                "INSERT INTO transfers(transfer_id, from_account, to_account, amount, currency) "
+                "VALUES (%s,%s,%s,%s,%s) ON CONFLICT (transfer_id) DO NOTHING",
+                (tid, body.from_account, body.to_account, body.amount, body.currency))
+            # ledger fan-out holds the connection for a bit; this is what makes a small pool hurt
+            await conn.execute("SELECT pg_sleep(%s)", (LEDGER_WRITE_MS / 1000,))
     except PoolTimeout as exc:
         raise _pool_exhausted(exc) from exc
     return {"transfer_id": tid, "status": "settled", "amount": str(body.amount), "currency": body.currency}

@@ -17,7 +17,7 @@ def build_authorization_request(
     discount = discount_cents(subtotal, config)
     taxable = subtotal - discount
     tax_rate = Decimal(str(config.get("tax_rate", "0")))
-    tax = int((Decimal(taxable) * tax_rate).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    tax = int((Decimal(taxable) * tax_rate).quantize(Decimal(1), rounding=ROUND_HALF_UP))
     # Defence in depth: authorize only what this cart's own arithmetic justifies.
     shipping = int(config.get("shipping_cents", 0))
     amount = subtotal - discount + tax + shipping

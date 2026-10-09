@@ -1,18 +1,36 @@
-"""PagerDuty webhook -> v2 squad on Agent Engine. Verifies the PagerDuty v3 signature, then starts a
-session with the page text. Nothing else: the agent squad and its control plane do the work."""
+"""The human-facing bridge to the agent squad, one small Cloud Run service:
+
+  POST /pagerduty        PagerDuty webhook -> start a v2 investigation on Agent Engine
+  GET  /proposals/{id}   read a proposal (the human's preview before approving)
+  POST /approve          {proposal_id, approver} + X-Approve-Token -> write the approval record
+  GET  /health
+
+The approval path is a human action, not a model action: it writes the record the control plane and
+remediation-mcp check, in the shared proposal store (PROPOSAL_STORE=gcs in the cloud deployment).
+Wire /approve into a Slack slash command or a button; the token lives in Secret Manager.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
+import sys
+from datetime import UTC, datetime
 
+import proposals as store
 import vertexai
 from fastapi import FastAPI, Header, HTTPException, Request
 from vertexai import agent_engines
 
 app = FastAPI()
 SECRET = os.environ.get("PAGERDUTY_WEBHOOK_SECRET", "")
+APPROVE_TOKEN = os.environ.get("APPROVE_TOKEN", "")
+
+
+def _log(msg: str, **fields: object) -> None:
+    print(json.dumps({"severity": "INFO", "message": msg, **fields}), file=sys.stdout, flush=True)
 
 
 def _verify(body: bytes, signature_header: str) -> bool:
@@ -35,6 +53,31 @@ async def pagerduty(req: Request, x_pagerduty_signature: str = Header(default=""
     session = engine.create_session(user_id="pagerduty")
     events = [e for e in engine.stream_query(user_id="pagerduty", session_id=session["id"], message=page)]
     return {"session": session["id"], "events": len(events), "page": page}
+
+
+@app.get("/proposals/{proposal_id}")
+def get_proposal(proposal_id: str) -> dict:
+    rec = store.load(proposal_id)
+    if rec is None:
+        raise HTTPException(404, "unknown proposal")
+    return rec
+
+
+@app.post("/approve")
+async def approve(req: Request, x_approve_token: str = Header(default="")) -> dict:
+    if not APPROVE_TOKEN or not hmac.compare_digest(APPROVE_TOKEN, x_approve_token):
+        raise HTTPException(401, "bad approve token")
+    body = await req.json()
+    pid, who = str(body.get("proposal_id", "")), str(body.get("approver", "unknown"))
+    rec = store.load(pid)
+    if rec is None:
+        raise HTTPException(404, "unknown proposal")
+    if rec["status"] != "pending_approval":
+        raise HTTPException(409, f"proposal is '{rec['status']}', only pending_approval can be approved")
+    rec.update(status="approved", approved_by=who, approved_ts=datetime.now(UTC).isoformat())
+    store.save(rec)
+    _log("Approve", proposal=pid, by=who)
+    return rec
 
 
 @app.get("/health")

@@ -23,6 +23,15 @@ remote = agent_engines.create(
     display_name="sre-v2-thai-retail",
     requirements=["google-adk>=2.9,<3", "google-cloud-aiplatform[agent_engines]"],
     extra_packages=["agents", "evidence/INC-2026-1009"],
-    env_vars={"SRE_MODEL": os.environ.get("SRE_MODEL", "gemini-2.5-flash")},
+    env_vars={
+        "SRE_MODEL": os.environ.get("SRE_MODEL", "gemini-2.5-flash"),
+        "SRE_TOOLS": os.environ.get("SRE_TOOLS", "local"),
+        "OBS_MCP_URL": os.environ.get("OBS_MCP_URL", ""),
+        "RELEASE_MCP_URL": os.environ.get("RELEASE_MCP_URL", ""),
+        "INCIDENT_MCP_URL": os.environ.get("INCIDENT_MCP_URL", ""),
+        "REMEDIATION_MCP_URL": os.environ.get("REMEDIATION_MCP_URL", ""),
+        "PROPOSAL_STORE": os.environ.get("PROPOSAL_STORE", "local"),
+        "PROPOSAL_BUCKET": os.environ.get("PROPOSAL_BUCKET", f"{PROJECT}-payments-demo"),
+    },
 )
 print("deployed:", remote.resource_name)

@@ -15,8 +15,9 @@ from typing import Any
 
 from google.adk.tools import BaseTool, ToolContext
 
+from agents.common import proposals
 from agents.common.bundle import ROOT
-from agents.common.tools import PROPOSALS, validate_citations
+from agents.common.tools import validate_citations
 
 AUDIT = ROOT / "audit" / "tool_calls.jsonl"
 
@@ -36,8 +37,8 @@ def before_tool(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext)
             audit("PolicyDeny", tool=tool.name, reason=stop)
             return {"denied": True, "reason": stop}
         pid = str(args.get("proposal_id", ""))
-        p = PROPOSALS / f"{pid}.json"
-        status = json.loads(p.read_text())["status"] if p.exists() else "unknown"
+        rec = proposals.load(pid)
+        status = rec["status"] if rec else "unknown"
         if status != "approved":
             audit("PolicyDeny", tool=tool.name, proposal=pid, status=status)
             return {"denied": True, "reason": f"policy: proposal {pid} status is '{status}'; "
@@ -58,9 +59,10 @@ def after_tool(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, 
 
 def approve(proposal_id: str, approver: str) -> dict:
     """Human step. No model involved: writes the approval record the policy gate looks for."""
-    p = PROPOSALS / f"{proposal_id}.json"
-    rec = json.loads(p.read_text())
+    rec = proposals.load(proposal_id)
+    if rec is None:
+        return {"error": f"unknown proposal {proposal_id}"}
     rec.update(status="approved", approved_by=approver, approved_ts=datetime.now(UTC).isoformat())
-    p.write_text(json.dumps(rec, indent=1))
+    proposals.save(rec)
     audit("Approve", proposal=proposal_id, by=approver)
     return rec
