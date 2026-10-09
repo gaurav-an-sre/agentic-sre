@@ -69,7 +69,19 @@ done
 for f in /tmp/slo_policies/*-*.json; do
   case "$f" in *-metrics.json) continue;; esac
   name=$(python3 -c "import json; print(json.load(open('$f'))['displayName'])")
-  gcloud monitoring policies list --project "$PROJECT" --filter "displayName=\"$name\"" --format 'value(name)' | grep -q . && continue
-  gcloud monitoring policies create --policy-from-file "$f" --project "$PROJECT"
+  existing=$(gcloud monitoring policies list --project "$PROJECT" --filter "displayName=\"$name\"" --format 'value(name)' | head -1)
+  if [ -n "$existing" ]; then
+    # in-place update: same display name but new condition shape (e.g. volume-era policies)
+    # must be replaced, not skipped - skip leaves stale thresholds armed
+    python3 - "$f" "$existing" <<'PY' > /tmp/policy_update.json
+import json, sys
+p = json.load(open(sys.argv[1]))
+p["name"] = sys.argv[2]          # full resource name of the existing policy
+json.dump(p, sys.stdout)
+PY
+    gcloud alpha monitoring policies update "$existing" --policy-from-file /tmp/policy_update.json --project "$PROJECT"
+  else
+    gcloud monitoring policies create --policy-from-file "$f" --project "$PROJECT"
+  fi
 done
 echo "SLO burn-rate policies in place (definitions live in sre/slo.yaml)"

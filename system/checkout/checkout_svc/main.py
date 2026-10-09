@@ -25,6 +25,7 @@ from .pricing import quote
 from .watchdog import Watchdog, WatchdogThread
 
 logger = logging.getLogger("checkout_svc")
+logger.setLevel(logging.INFO)  # order_decision events are the order_success SLO's only signal
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 metrics = MetricsRecorder()
 watchdog_thread: WatchdogThread | None = None
