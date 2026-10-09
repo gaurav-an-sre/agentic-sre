@@ -16,5 +16,14 @@ def gcp_mode() -> bool:
 
 def serve(server: MCPServer) -> None:
     """Streamable-HTTP on $PORT (Cloud Run contract). Auth is IAM at the Cloud Run edge
-    (--no-allow-unauthenticated, ingress internal); the server itself trusts the caller identity."""
-    uvicorn.run(server.streamable_http_app(), host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))
+    (--no-allow-unauthenticated); the server itself trusts the caller identity. Host/origin
+    checks are widened to the *.a.run.app hostnames the platform routes by."""
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    app = server.streamable_http_app(
+        transport_security=TransportSecuritySettings(
+            allowed_hosts=["*.a.run.app", "localhost", "127.0.0.1"],
+            allowed_origins=["https://*.a.run.app"],
+        )
+    )
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))
