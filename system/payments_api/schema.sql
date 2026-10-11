@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS accounts (
   account_id TEXT PRIMARY KEY,
   balance    NUMERIC(14,2) NOT NULL,
-  currency   TEXT NOT NULL DEFAULT 'SGD'
+  currency   TEXT NOT NULL DEFAULT 'THB'
 );
 CREATE TABLE IF NOT EXISTS transfers (
   transfer_id  TEXT PRIMARY KEY,

@@ -79,7 +79,7 @@ class TransferIn(BaseModel):
     from_account: str
     to_account: str
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
-    currency: str = "SGD"
+    currency: str = "THB"
     idempotency_key: str | None = None
 
 

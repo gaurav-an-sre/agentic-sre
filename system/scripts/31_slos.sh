@@ -39,7 +39,7 @@ for svc, cfg in doc["services"].items():
                                      "filter": num, "denominatorFilter": den,
                                      "aggregations": ALIGN, "denominatorAggregations": ALIGN,
                                      "comparison": "COMPARISON_GT", "thresholdValue": threshold,
-                                     "duration": f"{br['window_minutes']}s"}}],
+                                     "duration": f"{br['window_minutes']*60}s"}}],
                  "userLabels": {"service": svc, "slo": slo["name"], "burn": name}}
             json.dump(p, open(f"{out}/{svc}-{slo['name']}-{name}.json", "w"))
             # emit the log-metric spec for the shell to provision first

@@ -9,7 +9,7 @@ services:
     slos:
       - name: availability
         description: "fraction of successful (non-5xx) requests over the window"
-        target: 0.999          # 99.9% - 1000 min error budget per 30d
+        target: 0.999          # 99.9% - 1 failed request in 1,000; ~43 min of full outage per 30d
         window_days: 30
         indicator:
           good: 'metric.type="run.googleapis.com/request_count" AND metric.label.response_code_class!="5xx"'

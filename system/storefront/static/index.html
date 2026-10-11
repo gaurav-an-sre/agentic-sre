@@ -52,11 +52,8 @@
   <form id="checkoutForm" class="modal-card">
     <header class="drawer-head"><h3>Checkout</h3><button type="button" id="closeModal" class="icon-btn">✕</button></header>
     <label>Name<input id="fName" required value="Demo Shopper"></label>
-    <label>Card number<input id="fCard" required inputmode="numeric" value="4242 4242 4242 4242"></label>
-    <div class="grid2">
-      <label>Expiry<input id="fExp" required value="12/28"></label>
-      <label>CVV<input id="fCvv" required inputmode="numeric" value="123"></label>
-    </div>
+    <p class="pay-method">Paying with <b>Visa •••• 4242</b> — saved test card, nothing is collected.</p>
+    <div id="quoteRows"></div>
     <div class="row"><span>Total</span><strong id="modalTotal">฿0.00</strong></div>
     <button id="payBtn" class="primary" type="submit">Pay now</button>
     <p id="payErr" class="err" hidden></p>

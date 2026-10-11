@@ -54,6 +54,11 @@ def post_checkout(payload: dict[str, Any], rid: str) -> httpx.Response:
                       headers={"X-Request-ID": rid}, timeout=15)
 
 
+def post_quote(payload: dict[str, Any], rid: str) -> httpx.Response:
+    return httpx.post(f"{UPSTREAM}/api/quote", json=payload,
+                      headers={"X-Request-ID": rid}, timeout=10)
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> str:
     # the page shows its own request id via a meta tag - it is caller-influenced input, so
@@ -69,6 +74,17 @@ def products() -> Any:
     except httpx.HTTPError as exc:
         return JSONResponse({"status": "error", "reason": "catalog_unreachable",
                              "detail": str(exc)}, status_code=502)
+
+
+@app.post("/api/quote")
+async def quote(request: Request) -> JSONResponse:
+    rid = getattr(request.state, "request_id", f"req_{uuid.uuid4().hex[:12]}")
+    try:
+        resp = post_quote(await request.json(), rid)
+    except httpx.HTTPError as exc:
+        return JSONResponse({"status": "error", "reason": "checkout_unreachable",
+                             "request_id": rid, "detail": str(exc)}, status_code=502)
+    return JSONResponse(resp.json(), status_code=resp.status_code)
 
 
 @app.post("/api/checkout")

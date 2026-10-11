@@ -11,8 +11,18 @@ from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
 
 
 def _id_token(audience: str) -> str:
-    return subprocess.run(["gcloud", "auth", "print-identity-token", f"--audiences={audience}"],
-                          check=True, capture_output=True, text=True).stdout.strip()
+    sa = os.environ.get("SRE_MCP_CALLER_SA")
+    try:
+        cmd = ["gcloud", "auth", "print-identity-token", f"--audiences={audience}"]
+        if sa:
+            cmd += [f"--impersonate-service-account={sa}"]
+        return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout.strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        # no gcloud on the box (Agent Engine, Cloud Run): mint from the runtime's own identity
+        from google.auth.transport.requests import Request
+        from google.oauth2 import id_token as oauth_id_token
+
+        return oauth_id_token.fetch_id_token(Request(), audience)
 
 
 def toolset(env_var: str, tool_filter: list[str] | None = None) -> McpToolset:

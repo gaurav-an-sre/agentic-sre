@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -26,6 +27,9 @@ from .watchdog import Watchdog, WatchdogThread
 
 logger = logging.getLogger("checkout_svc")
 logger.setLevel(logging.INFO)  # order_decision events are the order_success SLO's only signal
+# one JSON object per stdout line -> Cloud Logging jsonPayload; without a handler, INFO is dropped
+logger.addHandler(logging.StreamHandler(sys.stdout))
+logger.propagate = False
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 metrics = MetricsRecorder()
 watchdog_thread: WatchdogThread | None = None
@@ -190,7 +194,8 @@ def checkout(cart_request: CartRequest, request: Request) -> dict[str, Any]:
     order_id = db.create_order(timestamp, outcome, reason, customer_quote.total_cents)
     # structured decision record: what the order_success SLO burns on (declines are 2xx,
     # so request metrics can't see them - Cloud Logging -> log-based metrics does)
-    logger.info(json.dumps({"event": "order_decision", "order_id": order_id, "outcome": outcome,
+    logger.info(json.dumps({"severity": "INFO", "service": "checkout",
+                            "event": "order_decision", "order_id": order_id, "outcome": outcome,
                             "reason": reason, "total_cents": customer_quote.total_cents,
                             "request_id": rid}))
     latency_ms = round((time.perf_counter() - started) * 1000, 2)

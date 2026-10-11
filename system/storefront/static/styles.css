@@ -81,3 +81,5 @@ code{font-family:ui-monospace,Menlo,monospace}
 .small{font-size:12px}
 
 @media(max-width:640px){.nav{display:none}.hero h1{font-size:26px}}
+.pay-method{font-size:13px;color:var(--muted);background:#f3f4f6;border-radius:8px;padding:8px 10px;margin:10px 0}
+#quoteRows .row{padding:2px 0}

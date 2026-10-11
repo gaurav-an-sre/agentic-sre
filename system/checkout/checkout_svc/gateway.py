@@ -39,7 +39,7 @@ def _authorize_remote(requested: int, request_id: str, out: dict[str, Any]) -> d
         resp = httpx.post(
             f"{PAYMENTS_URL}/v1/transfers",
             json={"from_account": "acc_0001", "to_account": "acc_0002",
-                  "amount": str(round(requested / 100, 2)), "currency": "SGD",
+                  "amount": str(round(requested / 100, 2)), "currency": "THB",
                   "idempotency_key": request_id or f"chk_{uuid.uuid4().hex[:12]}"},
             headers=headers, timeout=15)
     except httpx.HTTPError:
