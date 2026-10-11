@@ -59,10 +59,8 @@ def after_tool(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, 
 
 def approve(proposal_id: str, approver: str) -> dict:
     """Human step. No model involved: writes the approval record the policy gate looks for."""
-    rec = proposals.load(proposal_id)
+    rec = proposals.approve(proposal_id, approver)
     if rec is None:
-        return {"error": f"unknown proposal {proposal_id}"}
-    rec.update(status="approved", approved_by=approver, approved_ts=datetime.now(UTC).isoformat())
-    proposals.save(rec)
+        return {"error": f"unknown or non-pending proposal {proposal_id}"}
     audit("Approve", proposal=proposal_id, by=approver)
     return rec

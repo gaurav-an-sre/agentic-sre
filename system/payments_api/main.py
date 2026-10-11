@@ -137,6 +137,19 @@ async def create_transfer(body: TransferIn) -> dict:
                     "amount": str(existing["amount"]), "currency": existing["currency"],
                     "idempotent_replay": True}
         async with pool.connection() as conn, conn.transaction():
+            # claim the idempotency key inside the transaction: two concurrent retries with the same
+            # key race past the pre-check above; only the first insert wins, the second replays
+            cur = await conn.execute(
+                "INSERT INTO transfers(transfer_id, from_account, to_account, amount, currency) "
+                "VALUES (%s,%s,%s,%s,%s) ON CONFLICT (transfer_id) DO NOTHING",
+                (tid, body.from_account, body.to_account, body.amount, body.currency))
+            if cur.rowcount == 0:
+                existing = await (await conn.execute(
+                    "SELECT transfer_id, amount, currency FROM transfers WHERE transfer_id=%s", (tid,))
+                ).fetchone()
+                return {"transfer_id": existing["transfer_id"], "status": "settled",
+                        "amount": str(existing["amount"]), "currency": existing["currency"],
+                        "idempotent_replay": True}
             src = await (await conn.execute(
                 "SELECT balance FROM accounts WHERE account_id=%s FOR UPDATE", (body.from_account,))
             ).fetchone()
@@ -148,10 +161,6 @@ async def create_transfer(body: TransferIn) -> dict:
                                (body.amount, body.from_account))
             await conn.execute("UPDATE accounts SET balance=balance+%s WHERE account_id=%s",
                                (body.amount, body.to_account))
-            await conn.execute(
-                "INSERT INTO transfers(transfer_id, from_account, to_account, amount, currency) "
-                "VALUES (%s,%s,%s,%s,%s) ON CONFLICT (transfer_id) DO NOTHING",
-                (tid, body.from_account, body.to_account, body.amount, body.currency))
             # ledger fan-out holds the connection for a bit; this is what makes a small pool hurt
             await conn.execute("SELECT pg_sleep(%s)", (LEDGER_WRITE_MS / 1000,))
     except PoolTimeout as exc:

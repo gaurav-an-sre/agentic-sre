@@ -51,7 +51,7 @@ def test_claim_is_atomic_only_one_caller_wins():
     rec = proposals.claim(pid)
     assert rec["status"] == "applying"
     assert proposals.claim(pid) is None          # second concurrent caller loses
-    proposals.save({**proposals.load(pid), "status": "applied"})
+    proposals.mark_applied({**proposals.load(pid), "status": "applied"})
     proposals.release(pid)
     assert proposals.claim(pid) is None          # applied proposals can't be claimed again
 

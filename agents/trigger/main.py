@@ -17,7 +17,6 @@ import hmac
 import json
 import os
 import sys
-from datetime import UTC, datetime
 
 import proposals as store
 import vertexai
@@ -76,8 +75,7 @@ async def approve(req: Request, x_approve_token: str = Header(default="")) -> di
         raise HTTPException(404, "unknown proposal")
     if rec["status"] != "pending_approval":
         raise HTTPException(409, f"proposal is '{rec['status']}', only pending_approval can be approved")
-    rec.update(status="approved", approved_by=who, approved_ts=datetime.now(UTC).isoformat())
-    store.save(rec)
+    rec = store.approve(pid, who)
     _log("Approve", proposal=pid, by=who)
     return rec
 

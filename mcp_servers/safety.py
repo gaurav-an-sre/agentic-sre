@@ -33,6 +33,9 @@ def red_button() -> str | None:
         return "red button: AGENT_ACTUATION_PAUSED is set; all agent actuation is paused"
     if RED_BUTTON_FILE.exists():
         return f"red button: {RED_BUTTON_FILE.name} present ({RED_BUTTON_FILE.read_text().strip() or 'no reason given'})"
+    flag = proposal_store.control_get("red_button")  # checked per call; survives revisions
+    if flag:
+        return f"red button: {flag.get('reason', 'pressed')}"
     return None
 
 

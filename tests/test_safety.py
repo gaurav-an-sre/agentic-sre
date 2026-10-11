@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from agents.common import control_plane as cp
+from agents.common import proposals
 from agents.common import tools as t
 from agents.common.control_plane import approve
 from mcp_servers import remediation, safety
@@ -29,10 +29,10 @@ def approved(tmp_path, monkeypatch):
 
 
 def test_dry_run_changes_nothing(approved):
-    pid, target, d = approved
+    pid, target, _ = approved
     res = remediation.shift_traffic(pid, "payments-api", target, incident_id=INC, dry_run=True)
     assert res["dry_run"] and res["would_apply"] and res["plan"]["to"] == {target: 100}
-    assert json.loads((d / f"{pid}.json").read_text())["status"] == "approved"  # still not applied
+    assert proposals.load(pid)["status"] == "approved"  # still not applied
 
 
 def test_justification_requires_open_incident(approved):
@@ -56,14 +56,15 @@ def test_red_button_pauses_everything(approved, monkeypatch):
 
 
 def test_concurrent_action_holds_until_human_overrides(approved):
-    pid, target, d = approved
+    pid, target, _ = approved
     other = {"id": "P-other", "status": "applied", "applied_ts": (datetime.now(UTC) - timedelta(minutes=2)).isoformat()}
-    (d / "P-other.json").write_text(json.dumps(other))
+    proposals.save({"id": "P-other", "action": "x"})
+    proposals.mark_applied(other)
     held = remediation.shift_traffic(pid, "payments-api", target, incident_id=INC)
     assert held["held"] and "concurrent action" in held["reason"]
     ok = remediation.shift_traffic(pid, "payments-api", target, incident_id=INC, override_hold="oncall@example.com")
     assert "simulated" in ok["result"]
-    assert json.loads((d / f"{pid}.json").read_text())["override_hold"] == "oncall@example.com"
+    assert proposals.load(pid)["override_hold"] == "oncall@example.com"
 
 
 def test_change_freeze_hold(approved, monkeypatch):

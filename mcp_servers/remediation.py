@@ -32,12 +32,18 @@ def allowed_revisions(service: str) -> set[str]:
     return {d["revision"] for d in bundle_tools.bundle.deployments() if d.get("revision")}
 
 
-def check(proposal_id: str, service: str, revision: str) -> dict | None:
+def check(proposal_id: str, service: str, revision: str, percent: int = 100) -> dict | None:
     rec = proposals.load(proposal_id) or {"status": "unknown"}
     if rec["status"] != "approved":
         return {"denied": True, "reason": f"proposal {proposal_id} is '{rec['status']}', not approved"}
-    if rec.get("target_revision") and rec["target_revision"] != revision:
-        return {"denied": True, "reason": f"approved target is {rec['target_revision']}, not {revision}"}
+    # bind to the target the human approved (snapshotted in the approvals/ object)
+    target = rec.get("approved_target") or {}
+    if not target.get("target_revision") or target["target_revision"] != revision:
+        return {"denied": True, "reason": f"approved target is {target.get('target_revision')}, not {revision}"}
+    if target.get("service") and target["service"] != service:
+        return {"denied": True, "reason": f"approved service is {target['service']}, not {service}"}
+    if target.get("percent") is not None and int(target["percent"]) != percent:
+        return {"denied": True, "reason": f"approved percent is {target['percent']}, not {percent}"}
     if revision not in allowed_revisions(service):
         return {"denied": True, "reason": f"{revision} is not a known revision of {service} (allow-list)"}
     return None
@@ -51,7 +57,7 @@ def shift_traffic(proposal_id: str, service: str, revision: str, percent: int = 
     red button is not pressed. Risk holds (another change in flight, change freeze) stop the call unless a
     human passes override_hold with their name. dry_run=true returns the plan and every check without
     changing anything."""
-    denied = check(proposal_id, service, revision)
+    denied = check(proposal_id, service, revision, percent)
     if denied:
         audit("PolicyDeny", tool="shift_traffic", proposal=proposal_id, dry_run=dry_run, **denied)
         return denied
@@ -61,10 +67,13 @@ def shift_traffic(proposal_id: str, service: str, revision: str, percent: int = 
     if flight["deny"]:
         audit("PolicyDeny", tool="shift_traffic", proposal=proposal_id, dry_run=dry_run, reason=flight["deny"])
         return {"denied": True, "reason": flight["deny"], "plan": plan}
-    if flight["holds"] and not override_hold:
+    # a risk hold can only be overridden by the human who approved this proposal
+    approved_by = (proposals.load(proposal_id) or {}).get("approved_by")
+    if flight["holds"] and override_hold != approved_by:
         audit("RiskHold", tool="shift_traffic", proposal=proposal_id, dry_run=dry_run, holds=flight["holds"])
         return {"held": True, "reason": "; ".join(flight["holds"]),
-                "next": "a human may re-run with override_hold=<name> after reviewing the plan", "plan": plan}
+                "next": f"the approving human may re-run with override_hold={approved_by!r} after reviewing the plan",
+                "plan": plan}
     if dry_run:
         audit("DryRun", tool="shift_traffic", proposal=proposal_id, plan=plan)
         return {"dry_run": True, "would_apply": True, "plan": plan}
@@ -82,7 +91,7 @@ def shift_traffic(proposal_id: str, service: str, revision: str, percent: int = 
         rec.update(status="applied", applied_ts=datetime.now(UTC).isoformat(), apply_result=result,
                    incident_id=incident_id, override_hold=override_hold or None)
     finally:
-        proposals.save(rec)
+        proposals.mark_applied(rec)
         proposals.release(proposal_id)
     audit("Apply", tool="shift_traffic", proposal=proposal_id, service=service, revision=revision, percent=percent,
           incident=incident_id, override_hold=override_hold or None)
