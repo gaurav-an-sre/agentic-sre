@@ -9,7 +9,7 @@ services:
     slos:
       - name: availability
         description: "fraction of successful (non-5xx) requests over the window"
-        target: 0.999          # 99.9% - 1000 min error budget per 30d
+        target: 0.95           # 95% to start (~36 h budget / 30d) - tighten as the practice proves out
         window_days: 30
         indicator:
           good: 'metric.type="run.googleapis.com/request_count" AND metric.label.response_code_class!="5xx"'
@@ -24,14 +24,14 @@ services:
     # hence a business SLO (order success) next to the technical one.
     slos:
       - name: availability
-        target: 0.999
+        target: 0.95           # same starting target as payments-api
         window_days: 30
         indicator:
           good: 'metric.type="run.googleapis.com/request_count" AND metric.label.response_code_class!="5xx"'
           total: 'metric.type="run.googleapis.com/request_count"'
       - name: order_success
         description: "share of checkout attempts that produce an approved order (decline_rate is the burn)"
-        target: 0.98           # a sustained decline_rate >2% is a page, not a bad day
+        target: 0.95           # a sustained decline_rate >5% is a page, not a bad day
         window_days: 30
         indicator:
           type: log_ratio      # declines are HTTP 2xx: only the order_decision log sees them
@@ -41,6 +41,7 @@ services:
           bad_filter: ' AND jsonPayload.outcome="declined"'
 
 # burn rates: fast burn = page now (30m window), slow burn = ticket/Slack (6h window)
+# multipliers are of the error budget, so they work unchanged at any target
 burn_rates:
   fast:
     window_minutes: 30
