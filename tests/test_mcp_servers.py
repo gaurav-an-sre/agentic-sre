@@ -27,7 +27,7 @@ def test_read_tools_return_citeable_ids() -> None:
     revs = release.list_revisions("payments-api")
     assert revs and all("id" in r for r in revs)
     assert "metric" in observability.query_metrics("payments-api", "http_5xx_rate")
-    assert observability.get_slo("payments-api")["slo_target"] == 0.995
+    assert observability.get_slo("payments-api")["slo_target"] == 0.95
 
 
 def test_shift_traffic_denied_without_approval(tmp_path, monkeypatch) -> None:

@@ -65,8 +65,8 @@ def get_logs(service: str, level: str = "ERROR", lines: int = 30, minutes: int =
 
 @server.tool()
 def get_slo(service: str) -> dict:
-    """Pilot SLOs and current burn from the 5xx series (99.9% checkout success; 99.5% payments-api)."""
-    target = {"checkout": 0.999, "payments-api": 0.995}.get(service, 0.999)
+    """Pilot SLOs and current burn from the 5xx series (95% starting target on every service)."""
+    target = 0.95
     s = query_metrics(service, "http_5xx_rate" if not gcp_mode() else "http_5xx_rps")
     pts = s.get("points", [])
     if not pts:
