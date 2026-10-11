@@ -42,7 +42,7 @@ def _discount_cents(subtotal_cents: int, config: dict[str, Any]) -> int:
             percent = Decimal(str(promo.get("percent", "0")))
             discount += int(
                 (Decimal(subtotal_cents) * percent / Decimal(100)).quantize(
-                    Decimal("1"), rounding=ROUND_HALF_UP
+                    Decimal(1), rounding=ROUND_HALF_UP
                 )
             )
     return min(subtotal_cents, discount)
@@ -58,7 +58,7 @@ def quote(cart: list[dict[str, Any]], path: Path | None = None) -> Quote:
     discount = _discount_cents(subtotal, config)
     taxable = subtotal - discount
     tax_rate = Decimal(str(config.get("tax_rate", "0")))
-    tax = int((Decimal(taxable) * tax_rate).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    tax = int((Decimal(taxable) * tax_rate).quantize(Decimal(1), rounding=ROUND_HALF_UP))
     shipping = int(config.get("shipping_cents", 0))
     if any(
         isinstance(promo, dict)

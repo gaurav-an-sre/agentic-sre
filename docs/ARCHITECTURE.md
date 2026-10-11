@@ -50,6 +50,45 @@ The same design was later rebuilt on the Claude Agent SDK (see `claude-code-demo
 
 Each of these maps to one line in the v2 table above (4, 4, 5/6, 4, 8).
 
+## How agents reach tools: MCP
+
+Every external system sits behind an MCP server (`mcp_servers/`), a fixed menu of typed actions. The model
+never holds API keys or a shell. Four services, one Cloud Run deployment each, internal ingress, IAM auth,
+one service account each:
+
+| server | tools | SA roles | writes |
+|---|---|---|---|
+| observability-mcp | query_metrics, get_service_health, get_alerts, get_logs, get_slo | monitoring.viewer, logging.viewer | none |
+| release-mcp | list_revisions, get_deploy_diff, read_config, get_runbook | run.viewer, clouddeploy.viewer | none |
+| incident-mcp | get_incident, create_issue, write_postmortem | logging.logWriter (+ Jira/Confluence tokens) | Jira/Confluence only |
+| remediation-mcp | shift_traffic(proposal_id, service, revision, percent) | run.developer | Cloud Run traffic, approval-gated |
+
+The gate runs twice: in the agent's `before_tool` callback (`control_plane.py`) and again inside
+remediation-mcp (`check()`: approved proposal, matching target revision, revision on the allow-list). Results
+carry ids (Cloud Logging insertId, revision name, alert policy id) so the citation validator can resolve them.
+`SRE_TOOLS=mcp` switches the v2 squad from in-process functions to `McpToolset`s; the squad, prompts, control
+plane and evals are unchanged - which is also why the same servers serve a Claude Agent SDK harness.
+
+## Controls added after the first live denial (pre-flight on the write path)
+
+The approval gate alone turned out to be binary: when on-call asked the agent to "just apply it" the gate
+refused (good), but the human had no preview of blast radius, nothing stopped two remediations racing, and a
+rollback could land in the middle of a promo peak. `mcp_servers/safety.py` adds, below the model:
+
+| Control | What it does | Where |
+|---|---|---|
+| `dry_run=true` | Returns the plan (current split -> target) and every check result; mutates nothing | `shift_traffic` |
+| Justification | `incident_id` must be the open incident; resolved or unknown incidents are denied | `safety.justification` |
+| Concurrent-action hold | Another proposal applied inside `CONCURRENT_WINDOW_MIN` (10) -> `held`, until a human passes `override_hold=<name>` | `safety.concurrent_action` |
+| Change-freeze hold | `CHANGE_FREEZE_HOURS=18-23` (Asia/Bangkok) -> `held`; promo nights are humans-only unless overridden | `safety.change_freeze` |
+| Red button | `make red-button` locally / `system/scripts/80_red_button.sh on` on GCP pauses all agent actuation; enforced in the agent callback and in remediation-mcp | `safety.red_button` |
+
+These are the controls Google SRE's paper on AI in operations calls dry-run, justification verification,
+concurrent-action check and the "Red Button" (https://sre.google/resources/practices-and-processes/ai-engineering-reliable-operations/).
+On its autonomy ladder: v1 is L1 (assisted investigation), v2 is L2 (human approves, system actuates).
+L3 (auto-approve rollback for one alert class on non-payment services) is the agreed next step, gated on the
+replay suite - not claimed.
+
 ## Gemini/ADK -> Claude Agent SDK mapping
 | Concern | ADK (v2) | Claude Agent SDK (sre-agent) |
 |---|---|---|
@@ -59,6 +98,16 @@ Each of these maps to one line in the v2 table above (4, 4, 5/6, 4, 8).
 | Tools | plain functions | in-process MCP server |
 | Evidence, proposals, approval record, evals | identical files | identical files |
 The model and harness changed; the control plane, bundle format and evals did not. That portability was deliberate (decision 10).
+
+## Shared proposal store and the approve endpoint
+
+Approvals must survive process boundaries: a human approves in one place and three components must see
+it (the agent-side gate, remediation-mcp, the evals). `agents/common/proposals.py` is a tiny store
+with two backends: `local` (files under `proposals/`, used by tests and evals) and `gcs`
+(`gs://PROPOSAL_BUCKET/proposals/P-*.json`) for the cloud deployment. The approve endpoint on the
+trigger service (`POST /approve`, `X-Approve-Token` from Secret Manager) is a **human action, not a
+model action** - it writes the record; nothing model-facing gains a new permission. Wire it to a Slack
+slash command; `GET /proposals/{id}` gives the reviewer the same record the gates see.
 
 ## What is real vs. reference here
 - Customer context, the operating-model problem and the v1 -> v2 lessons: engagement.

@@ -26,10 +26,18 @@ the pressure case; v2 passes all three.
 ## Deploying the real system (later)
 ```zsh
 export PROJECT=<gcp project id> REGION=asia-southeast1
-cd system/scripts && ./00_enable_apis.sh && ./10_provision.sh && ./20_deploy.sh v2.14.2 50 5000 && ./30_alerts.sh
-./40_break.sh && ./50_loadgen.sh                 # bad revision + traffic, dashboard red in ~2 min
+cd system/scripts && ./deploy_all.sh    # APIs -> Cloud SQL -> payments-api -> checkout -> storefront -> alerts/Grafana/PagerDuty
+./50_loadgen.sh                         # real traffic; check storefront -> checkout -> payments-api request ids in Cloud Logging
+./40_break.sh                           # deploy the bad payments-api revision; dashboard red in ~2 min
 python evidence/gcp_snapshot.py snapshot --project $PROJECT   # -> evidence/INC-<ts>/
 export SRE_BUNDLE=evidence/INC-<ts>; make v2 ...  # apply now shifts real traffic, approval still required
 ./60_rollback.sh; ./90_teardown.sh
 ```
-Agent Engine: `agents/v2/deploy_agent_engine.py` (needs `pip install -e ".[gcp]"` and the project).
+Agents in the cloud: `agents/v2/deploy_agent_engine.py` -> `./70_mcp_servers.sh` (four least-privilege MCP
+services; remediation-mcp shares the proposal store on GCS) -> `./75_trigger.sh` (PagerDuty webhook **and**
+`POST /approve`: a human approves a proposal with `X-Approve-Token`, writing the record every gate honours -
+wire it to a Slack slash command). Needs `pip install -e ".[gcp]"`.
+
+The proposal store is the piece that makes the cloud path real: `PROPOSAL_STORE=local` keeps everything on
+disk for tests/evals; `PROPOSAL_STORE=gcs` + `PROPOSAL_BUCKET` puts `proposals/P-*.json` on GCS so the agent
+squad, remediation-mcp and the approve endpoint read and write the **same** records.

@@ -1,6 +1,6 @@
 """Snapshot a live Cloud Run incident into a frozen evidence bundle (same layout as the synthetic one).
 
-  uv run python -m sre_agent.gcp snapshot --project P --service payments-api --region R [--minutes 45]
+  .venv/bin/python evidence/gcp_snapshot.py snapshot --project P --service payments-api --region R [--minutes 45]
 
 Reads Cloud Monitoring (built-in Cloud Run metrics), Cloud Logging (the service's JSON logs) and the
 Cloud Run revision history, writes evidence/INC-<ts>/, seals a SHA-256 manifest and prints the
@@ -19,7 +19,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from sre_agent.bundle import ROOT
+from agents.common.bundle import ROOT
 
 MON = "https://monitoring.googleapis.com/v3"
 LOGS = "https://logging.googleapis.com/v2"

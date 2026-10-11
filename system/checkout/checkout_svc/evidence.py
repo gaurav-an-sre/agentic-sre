@@ -17,9 +17,8 @@ _FILE_LOCK = threading.Lock()
 def append_jsonl(name: str, record: dict[str, Any], directory: Path | None = None) -> None:
     target_dir = directory or var_dir()
     target_dir.mkdir(parents=True, exist_ok=True)
-    with _FILE_LOCK:
-        with (target_dir / name).open("a", encoding="utf-8") as output:
-            output.write(json.dumps(record, sort_keys=True) + "\n")
+    with _FILE_LOCK, (target_dir / name).open("a", encoding="utf-8") as output:
+        output.write(json.dumps(record, sort_keys=True) + "\n")
 
 
 def read_jsonl(name: str, directory: Path | None = None) -> list[dict[str, Any]]:

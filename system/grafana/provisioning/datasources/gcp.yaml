@@ -1,0 +1,15 @@
+apiVersion: 1
+datasources:
+  - name: Google Cloud Monitoring
+    type: stackdriver
+    access: proxy
+    isDefault: true
+    jsonData:
+      authenticationType: gce          # uses the Cloud Run service account (roles/monitoring.viewer)
+      defaultProject: ${PROJECT}
+  - name: Cloud Logging
+    type: googlecloud-logging-datasource
+    access: proxy
+    jsonData:
+      authenticationType: gce
+      defaultProject: ${PROJECT}

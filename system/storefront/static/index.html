@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lotus's — Fresh groceries, delivered</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="/">Lotus's<span class="brand-dot">.</span></a>
+    <nav class="nav">
+      <a href="#fresh">Fresh</a><a href="#pantry">Pantry</a><a href="#household">Household</a>
+    </nav>
+    <button id="cartBtn" class="cart-btn" aria-label="Open cart">
+      🛒 <span id="cartCount" class="cart-count">0</span>
+    </button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>Fresh groceries, delivered in 60 minutes.</h1>
+    <p>Everyday low prices across Bangkok &amp; upcountry — same-day slots open now.</p>
+  </div>
+</section>
+
+<main class="wrap">
+  <h2 class="section">This week's picks</h2>
+  <div id="grid" class="grid"><p class="loading">Loading products…</p></div>
+  <p class="rid-foot">request id <code id="rid">…</code> · every order traces end-to-end</p>
+</main>
+
+<!-- cart drawer -->
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" aria-label="Shopping cart" hidden>
+  <header class="drawer-head">
+    <h3>Your cart</h3><button id="closeDrawer" class="icon-btn">✕</button>
+  </header>
+  <div id="cartItems" class="cart-items"></div>
+  <footer class="drawer-foot">
+    <div class="row"><span>Subtotal</span><strong id="subtotal">฿0.00</strong></div>
+    <div class="row muted"><span>Delivery</span><span>Free over ฿100</span></div>
+    <button id="checkoutBtn" class="primary">Checkout</button>
+  </footer>
+</aside>
+
+<!-- checkout modal -->
+<div id="modal" class="modal" hidden>
+  <form id="checkoutForm" class="modal-card">
+    <header class="drawer-head"><h3>Checkout</h3><button type="button" id="closeModal" class="icon-btn">✕</button></header>
+    <label>Name<input id="fName" required value="Demo Shopper"></label>
+    <label>Card number<input id="fCard" required inputmode="numeric" value="4242 4242 4242 4242"></label>
+    <div class="grid2">
+      <label>Expiry<input id="fExp" required value="12/28"></label>
+      <label>CVV<input id="fCvv" required inputmode="numeric" value="123"></label>
+    </div>
+    <div class="row"><span>Total</span><strong id="modalTotal">฿0.00</strong></div>
+    <button id="payBtn" class="primary" type="submit">Pay now</button>
+    <p id="payErr" class="err" hidden></p>
+  </form>
+</div>
+
+<!-- confirmation -->
+<div id="confirm" class="modal" hidden>
+  <div class="modal-card confirm">
+    <div id="confirmIcon" class="big-icon">✅</div>
+    <h3 id="confirmTitle">Order placed</h3>
+    <p id="confirmDetail"></p>
+    <div class="rid-badge">request id <code id="confirmRid">—</code></div>
+    <p class="muted small">Trace this exact click in Cloud Logging: <code>jsonPayload.request_id="<span id="confirmRid2"></span>"</code></p>
+    <button id="confirmDone" class="primary">Continue shopping</button>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

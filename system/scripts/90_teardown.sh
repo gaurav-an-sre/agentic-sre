@@ -2,7 +2,9 @@
 # Remove everything billable. Keeps IAM roles.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
-gcloud run services delete "$SERVICE" --region "$REGION" --project "$PROJECT" -q || true
+for svc in "$SERVICE" checkout storefront sre-trigger observability-mcp release-mcp incident-mcp remediation-mcp grafana; do
+  gcloud run services delete "$svc" --region "$REGION" --project "$PROJECT" -q || true
+done
 gcloud sql instances delete "$SQL_INSTANCE" --project "$PROJECT" -q || true
 gcloud artifacts repositories delete "$REPO" --location "$REGION" --project "$PROJECT" -q || true
 gsutil -m rm -r "gs://$PROJECT-payments-demo" || true
