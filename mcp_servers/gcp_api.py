@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import urllib.parse
 import urllib.request
 from datetime import UTC, datetime, timedelta
+
+SENSITIVE_ENV = re.compile(r"key|secret|token|password|passwd|credential|cert", re.IGNORECASE)
 
 MON = "https://monitoring.googleapis.com/v3"
 LOGS = "https://logging.googleapis.com/v2"
@@ -83,7 +86,9 @@ def revisions(project: str, region: str, service: str) -> list[dict]:
         name = r["name"].split("/")[-1]
         out.append({"id": name, "revision": name, "created": r["createTime"], "traffic_percent": serving.get(name, 0),
                     "image": r["containers"][0]["image"].split("/")[-1],
-                    "env": {e["name"]: e.get("value", "<secret>") for e in r["containers"][0].get("env", [])}})
+                    "env": {e["name"]: ("<redacted>" if SENSITIVE_ENV.search(e["name"])
+                                        else e.get("value", "<secret>"))
+                            for e in r["containers"][0].get("env", [])}})
     return out
 
 

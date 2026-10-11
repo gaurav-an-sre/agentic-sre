@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import json
 
 import pytest
 
+from agents.common import proposals
 from agents.common import tools as t
 from agents.common.control_plane import approve
 from mcp_servers import incident, observability, release, remediation
@@ -48,7 +48,7 @@ def test_shift_traffic_requires_matching_allowlisted_revision(tmp_path, monkeypa
     assert remediation.shift_traffic(pid, "payments-api", "payments-api-99999-zzz", incident_id=inc)["denied"]  # wrong target
     ok = remediation.shift_traffic(pid, "payments-api", target, incident_id=inc)
     assert "simulated" in ok["result"]
-    assert json.loads((tmp_path / f"{pid}.json").read_text())["status"] == "applied"
+    assert proposals.load(pid)["status"] == "applied"
 
 
 def test_incident_writes_stay_local_without_jira(monkeypatch, tmp_path) -> None:

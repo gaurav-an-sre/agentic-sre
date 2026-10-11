@@ -12,8 +12,14 @@ YAML
 AGENT_SA="sre-agent@$PROJECT.iam.gserviceaccount.com"
 gcloud iam service-accounts describe "$AGENT_SA" --project "$PROJECT" >/dev/null 2>&1 || \
   gcloud iam service-accounts create sre-agent --display-name "SRE agent squad (Agent Engine caller)" --project "$PROJECT"
-# the agent runtime also reads/writes the shared proposal store (propose, gate, dry-run)
-gsutil iam ch "serviceAccount:$AGENT_SA:objectAdmin" "gs://$PROJECT-payments-demo" -q || true
+# the agent runtime reads the store and creates proposals - but can NEVER write approvals/, claims/
+# or control/ (it could otherwise forge its own approval). Create is conditioned on proposals/ only.
+gsutil iam ch -d "serviceAccount:$AGENT_SA:objectAdmin" "gs://$PROJECT-payments-demo" -q 2>/dev/null || true
+gcloud storage buckets add-iam-policy-binding "gs://$PROJECT-payments-demo" \
+  --member="serviceAccount:$AGENT_SA" --role=roles/storage.objectViewer -q >/dev/null || true
+gcloud storage buckets add-iam-policy-binding "gs://$PROJECT-payments-demo" \
+  --member="serviceAccount:$AGENT_SA" --role=roles/storage.objectCreator \
+  --condition="title=proposals-only,expression=resource.name.startsWith('projects/_/buckets/$PROJECT-payments-demo/objects/proposals/')" || true
 deploy() { # name roles...
   local name="$1"; shift
   local sa="$name@$PROJECT.iam.gserviceaccount.com"

@@ -116,7 +116,7 @@ def apply_remediation(proposal_id: str) -> dict:
     else:
         result = {"result": "simulated: " + rec["action"]}
     rec.update(status="applied", applied_ts=datetime.now(UTC).isoformat(), apply_result=result)
-    proposals.save(rec)
+    proposals.mark_applied(rec)
     return {**result, "proposal": proposal_id}
 
 
